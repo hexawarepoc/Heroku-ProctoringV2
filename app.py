@@ -1,6 +1,6 @@
 
 import logging
-from datetime import datetime,date
+
 """ logging.basicConfig(filename="log.txt",
                     level='INFO',
                     filemode='w',
@@ -20,26 +20,21 @@ from pymongo import MongoClient
 import base64
 from base64 import b64decode
 import datetime
-from datetime import date
+from datetime import datetime,date,timedelta
 from flask import Flask, redirect, render_template, Response,request,stream_with_context,jsonify,render_template, url_for,session,send_file
-from datetime import datetime,timedelta
 import urllib
 import urllib.request
 import json
-from datetime import timedelta
 import time
 import pymongo
 from bson.objectid import ObjectId
 import dns.resolver
-from pprint import pprint
 import io
 import bcrypt
-from flask import Flask
 from flask_talisman import Talisman
 import mimetypes
 import pandas as pd
 import win32com.client as win32
-import pythoncom
 from flask_wtf.csrf import CSRFProtect
 from typing import Any, Callable, Dict, List, Optional, Type, TYPE_CHECKING, Union
 from wsgiref.simple_server import ServerHandler
@@ -1348,6 +1343,9 @@ def Error():
 
 
 if __name__ == "__main__":
-    app.run(host="localhost",port=5000, debug=True)#port=443,)
+    #app.run(host="localhost",port=5000, debug=True)#port=443,)
 
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
+    
 
