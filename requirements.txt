@@ -28,5 +28,7 @@ opencv_python==4.4.0.44
 pandas==1.4.3
 Pillow==9.2.0
 python_bcrypt==0.3.2
-pywin32==302
+cmake==3.22.5
+dlib==19.24.0
+face_recognition==1.3.0
 xlsxwriter==3.0.3
