@@ -1,13 +1,6 @@
 
 import logging
-
-""" logging.basicConfig(filename="log.txt",
-                    level='INFO',
-                    filemode='w',
-                    format='%(asctime)s--%(levelname)s--%(message)s',
-                    datefmt='%Y-%m-%d %H:%M:%S') """
 logfile = open("log.txt","w")  
-import cv2
 from PIL import Image
 import numpy
 import face_recognition
@@ -15,20 +8,15 @@ from asyncio.windows_events import NULL
 from doctest import SKIP
 from collections import defaultdict
 import os
-from unittest import skip
 from pymongo import MongoClient
 import base64
 from base64 import b64decode
 import datetime
 from datetime import datetime,date,timedelta
-from flask import Flask, redirect, render_template, Response,request,stream_with_context,jsonify,render_template, url_for,session,send_file
-import urllib
-import urllib.request
+from flask import Flask, render_template, Response,request,render_template,session,send_file
 import json
-import time
 import pymongo
 from bson.objectid import ObjectId
-import dns.resolver
 import io
 import bcrypt
 from flask_talisman import Talisman
@@ -1343,7 +1331,7 @@ def Error():
 
 
 if __name__ == "__main__":
-    #app.run(host="localhost",port=5000, debug=True)#port=443,)
+    #app.run(host="localhost",port=5000, debug=True)#port=443,
 
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
