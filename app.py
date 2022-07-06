@@ -22,7 +22,6 @@ import bcrypt
 from flask_talisman import Talisman
 import mimetypes
 import pandas as pd
-import win32com.client as win32
 from flask_wtf.csrf import CSRFProtect
 from typing import Any, Callable, Dict, List, Optional, Type, TYPE_CHECKING, Union
 from wsgiref.simple_server import ServerHandler
