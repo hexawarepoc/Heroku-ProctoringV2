@@ -1,11 +1,6 @@
-
-import logging
-logfile = open("log.txt","w")  
 from PIL import Image
 import numpy
 import face_recognition
-from asyncio.windows_events import NULL
-from doctest import SKIP
 from collections import defaultdict
 import os
 from pymongo import MongoClient
@@ -23,23 +18,16 @@ from flask_talisman import Talisman
 import mimetypes
 import pandas as pd
 from flask_wtf.csrf import CSRFProtect
-from typing import Any, Callable, Dict, List, Optional, Type, TYPE_CHECKING, Union
+from typing import Any, Dict
 from wsgiref.simple_server import ServerHandler
-import xlsxwriter
 ServerHandler.server_software = "Fake Server Name Here"
 OVERRIDE_HTTP_HEADERS: Dict[str, Any] = {"Server":None}
 mimetypes.add_type('application/javascript', '.js')
-#SESSION_COOKIE_SECURE = True  
 
-try:
-    mongo_uri="mongodb+srv://hexaware:cssJavascript@josh.xotyr.mongodb.net/myFirstDatabase?retryWrites=true&w=majority"
-    #mongo_url="mongodb://localhost:27017"
-    cluster = MongoClient(mongo_uri)  
-    db=cluster["Test_Josh"]                  
-except Exception as ex:
-    logfile = open('log.txt', 'w')
-    logfile.write("MongoDB Connection:"+str(ex))
-    logfile.close()      
+
+mongo_uri="mongodb+srv://hexaware:cssJavascript@josh.xotyr.mongodb.net/myFirstDatabase?retryWrites=true&w=majority"
+cluster = MongoClient(mongo_uri)  
+db=cluster["Test_Josh"]                  
 
 app = Flask(__name__)
 app.config["SECRET_KEY"]="secret"
@@ -62,12 +50,8 @@ def apply_caching(response):
 def remove_header(response):
      del response.headers['X-Some-Custom-Header']
      return response
-#app.permanent_session_lifetime = timedelta(minutes=20)
 
 def insert_document(func_name,error):
-    mongo_uri = "mongodb+srv://hexaware:cssJavascript@josh.xotyr.mongodb.net/myFirstDatabase?retryWrites=true&w=majority"
-    #mongo_url="mongodb://localhost:27017"
-    cluster = MongoClient(mongo_uri)
     data = {"function_name":func_name,"error_msg":error,"error_timing":datetime.now()}
     db.app_logs.insert_one(data)
     return data       
@@ -81,9 +65,6 @@ def login():
        session.pop('logged_in_user_role', None)
        return render_template("login.html")
     except Exception as ex:
-        logfile = open('log.txt', 'w')
-        logging.write("Login Function Error: "+str(ex))
-        logfile.close() 
         insert_document("login",str(ex))                                                                                                                                                      
                                                  
 @app.route("/logincheck" ,methods=["POST"])
@@ -125,30 +106,20 @@ def logincheck():
                 session['logged_in_user_id'] = user_id                                                      
                 if db.master.find_one({"user_id":user_id,"role":"supervisor"}):
                     data={"Status":"Success"}
-                    logging.info("Success")
                     return json.dumps(data)
-                    # return login_user(role,user_id)
                 elif db.master.find_one({"user_id":user_id,"role":"super_admin"}):
                     data={"Status":"Success"}
                     return json.dumps(data)   
                 else:
-                    # return render_template("login.html",data="Agents dont have access to this")
                     data={"Status":"Error","Msg":"Agents dont have access to this"}
-                    logging.info("Agents dont have access to this")
                     return json.dumps(data)
             else:
-                # return render_template("login.html",data="Invalid user_id or password")
                 data={"Status":"Error","Msg":"Invalid username or password"}
-                logging.error("Invalid username or password")
                 return json.dumps(data)
         else:
             data={"Status":"Error","Msg":"Invalid username or password"}
-            logging.error("Invalid username or password")
             return json.dumps(data) 
     except Exception as ex:
-        logfile = open('log.txt', 'w')
-        logfile.write("Login check"+str(ex)) 
-        logfile.close()   
         insert_document("logincheck",str(ex))    
 
 #get the list of projects with supervisors and agents
@@ -190,10 +161,7 @@ def project_list():
         else:
             final_data=final_data                                                      
         return render_template("index.html", data=final_data)                                                       
-    except Exception as ex:
-        logfile = open('log.txt', 'w')
-        logfile.write("project_list Error"+str(ex)) 
-        logfile.close() 
+    except Exception as ex: 
         insert_document("project_list",str(ex))                
 
 @app.route("/ProjectListData/<PageNo>",methods = ['GET'])
@@ -238,9 +206,6 @@ def ProjectListData(PageNo):
             final_data=final_data                                                        
         return json.dumps(final_data, indent=2)                                                       
     except Exception as ex:
-        logfile = open('log.txt', 'w')
-        logfile.write("project_list Error"+str(ex)) 
-        logfile.close() 
         insert_document("project_list",str(ex))        
                 
 def login_user(role,user_id):
@@ -274,9 +239,6 @@ def login_user(role,user_id):
             final_data=list(filter(lambda final_data: final_data["supervisor"] ==session["user_id"], final_data))
         return render_template("index.html", data=final_data)
     except Exception as ex:
-        logfile = open('log.txt', 'w')
-        logfile.write("login_user Error"+str(ex)) 
-        logfile.close() 
         insert_document("login_user",str(ex))                                   
 
 #get the list of onboarded agents
@@ -305,8 +267,6 @@ def onboarded_agents():
             all_details=data
         return render_template("OnboardedAgent.html", ondata=all_details)                                                                                         
     except Exception as ex:
-        logfile = open('log.txt', 'w')
-        logfile.write("OnboardedAgent page Error"+str(ex)) 
         insert_document("onboarded_agents",str(ex))       
                                     
 @app.route("/OnboardedAgent/<PageNo>",methods = ['GET'])
@@ -325,7 +285,6 @@ def OnboardedAgent(PageNo):
         all_details = list(db.master.find({"role":"agent"},{"_id": 0, "user_id": 1, "user_name": 1, "onboarding_date": 1,"expiration_date": 1, "facial_img": 1, 
                                                 "status": 1}).skip(offset).limit(limit))  
         len_all_details = len(list(db["master"].find({"role":"agent"},{"_id": 0})))
-        #print(all_details[0])
         for i in all_details:
             for key in i.keys():
                 if key == "onboarding_date":
@@ -356,11 +315,8 @@ def OnboardedAgent(PageNo):
     except Exception as ex:
         print(ex)
         insert_document("OnboardedAgent",str(ex))  
-        #logfile = open('log.txt', 'w')
-        #logfile.write("OnboardedAgent Error"+str(ex)) 
                                                                    
 
-#get the list of onboarded agents based on status
 @app.route('/FilterOnboardedAgent',methods=["POST"])
 def FilterOnboardedAgent():
     try:
@@ -400,7 +356,6 @@ def FilterOnboardedAgent():
 
             num_rows=len(list(db["master"].find({},{"_id": 0, "user_id": 1})))
 
-        # db.users.find({"name": /.*m.*/})
         for i in query_result:
             for key in i.keys():
                 if key == "onboarding_date":
@@ -425,9 +380,6 @@ def FilterOnboardedAgent():
             return json.dumps([],indent=2)
 
     except Exception as ex:
-        logfile = open('log.txt', 'w')
-        logfile.write("FilterOnboardedAgent Error"+str(ex)) 
-        logfile.close()
         insert_document("FilterOnboardedAgent",str(ex))    
        
 #filter agentwise results based on project name and date
@@ -481,9 +433,6 @@ def agentdetails_home():
         
         return render_template("AgentList.html", data=data)
     except Exception as ex:
-        logfile = open('log.txt', 'w')
-        logfile.write("AgentList Error:"+str(ex))
-        logfile.close()
         insert_document("agentdetails_home",str(ex))  
 
 
@@ -494,10 +443,8 @@ def AgentListData(PageNo):
         limit=3
         offset=0
         if(PageNo == "1"):
-            #offset=((int(PageNo)) * limit) - limit
             pass
         else:
-            #offset=((int(PageNo)) * limit) - limit
             limit=3*int(PageNo)
             offset=limit-3
         if not session.get("logged_in_user_role"):
@@ -551,9 +498,6 @@ def AgentListData(PageNo):
         print(data)
         return json.dumps(data)
     except Exception as ex:
-        logfile = open('log.txt', 'w')
-        logfile.write("AgentListData Error:"+str(ex))
-        logfile.close()
         insert_document("AgentListData",str(ex))
 
 
@@ -603,9 +547,6 @@ def GetName():
                 i["_id"]["chart_name"]=i["_id"]["name"].replace(" ","")
         return json.dumps(data[0])
     except Exception as ex:
-        logfile = open('log.txt', 'w')
-        logfile.write("Get Name Error:"+str(ex))
-        logfile.close()
         insert_document("GetName",str(ex))  
 
 
@@ -617,7 +558,6 @@ def GetNameBYProject(project):
                 [{
                 "$match": {
                         "project_name":project
-                        # "date": {"$gte":time_from,"$lte":time_to}
                 }
                 }, {
                 "$group": {
@@ -636,9 +576,6 @@ def GetNameBYProject(project):
         
         return json.dumps(data[0],indent=2)
     except Exception as ex:
-        logfile = open('log.txt', 'w')
-        logfile.write("GetNameBYProject"+str(ex))
-        logfile.close()
         insert_document("GetNameBYProject",str(ex)) 
    
 
@@ -691,9 +628,6 @@ def projectagentdetails(project):
         print(data)
         return render_template("ProjectAgentList.html", data=data)
     except Exception as ex:
-        logfile = open('log.txt', 'w')
-        logfile.write("projectagentdetails Error"+str(ex))
-        logfile.close()
         insert_document("projectagentdetails",str(ex)) 
 
 
@@ -756,9 +690,6 @@ def FiltersAgentList():
             i["_id"]["chart_name"]=i["_id"]["name"].replace(" ","") 
         return json.dumps(data)
     except Exception as ex:
-        logfile = open('log.txt', 'w')
-        logfile.write("FilterAgent Error "+str(ex))
-        logfile.close()
         insert_document("FilterAgentList",str(ex)) 
 
 #display all the violation details.
@@ -825,9 +756,6 @@ def ViolationMgmt(PageNo):
     except Exception as ex:
         print(ex)
         insert_document("violation_details(PageNo)",str(ex)) 
-        logfile = open('log.txt', 'w')
-        logfile.write("ViolationMgmt Error:"+str(ex))
-        logfile.close()
         
 
 
@@ -854,16 +782,11 @@ def violation_details_filter(project,fro,to):
             data=x
         return render_template("ViolationMgmt.html", data=data)
     except Exception as ex:
-        logfile = open('log.txt', 'w')
-        logfile.write("ViolationMgmt Filter Error "+str(ex))
-        logfile.close()
         insert_document("violation_details_filter",str(ex)) 
 
 @app.route('/escalated_agents/<PageNo>',methods=["GET"])
 def escalated_agents(PageNo):
     try:
-         # if not session.get("logged_in_user_role"):
-    #     data={"current_user_role":session.get("logged_in_user_role")}
         limit=10
         if(PageNo == "1"):
             offset=((int(PageNo)) * limit) - limit
@@ -890,11 +813,7 @@ def escalated_agents(PageNo):
             return json.dumps(total,indent=2) 
         else:
             return json.dumps([],indent=2)
-        # return json.dumps(dbResponse)
     except Exception as ex:
-        logfile = open('log.txt', 'w')
-        logfile.write("escalated_agents(PageNo) Error"+str(ex))
-        logfile.close()
         insert_document("escalated_agents(PageNo)",str(ex))
 
 
@@ -913,9 +832,6 @@ def update_markedas(id,marked_as,user_id):
         db.master.update_one({"user_id":user_id,"role":"agent"},{"$set": {"flags":count}})
         return Response(response=json.dumps({"message": "marked_as field updated successfully"}))
     except Exception as ex:
-        logfile = open('log.txt', 'w')
-        logfile.write("update_markedas Error "+str(ex)) 
-        logfile.close()
         insert_document("update_markedas",str(ex))
 
 
@@ -929,9 +845,6 @@ def configuration():
         project_names = list(db["master"].distinct("project_name"))
         return render_template("Configurations.html",data = project_names)
     except Exception as ex:
-        logfile = open('log.txt', 'w')
-        logfile.write("Configuration Error"+str(ex))
-        logfile.close()
         insert_document("configuration",str(ex))
 
 @app.route("/violation_update",methods = ["POST","GET"])
@@ -949,9 +862,6 @@ def violation_update():
                                                         "violation_filter.no_person":no_person}})
         return Response(response=json.dumps({"message": "violation_filter field updated successfully"}))
     except Exception as ex:
-        logfile = open('log.txt', 'w')
-        logfile.write("Violation_update Error"+str(ex))
-        logfile.close()
         insert_document("violation_update",str(ex)) 
 
 @app.route("/GetViolation",methods = ["GET"])
@@ -960,9 +870,6 @@ def GetViolation():
         data = list(db.violation.distinct("violation_type"))
         return json.dumps(data,indent=2)
     except Exception as ex:
-        logfile = open('log.txt', 'w')
-        logfile.write("GetViolation Error"+str(ex))
-        logfile.close()
         insert_document("GetViolation",str(ex))
 
 @app.route("/GetProjectByConfigurations$project=<string:project_name>",methods = ["GET"])   
@@ -971,9 +878,6 @@ def configurations_list(project_name):
         data=list(db.master.find({"project_name":project_name,"role":"agent"},{"violation_filter":1,"_id":0}))
         return json.dumps(data[0])
     except Exception as ex:
-        logfile = open('log.txt', 'w')
-        logfile.write("GetProjectByConfigurations Error"+str(ex))
-        logfile.close()
         insert_document("configurations_list",str(ex)) 
 
 
@@ -993,9 +897,6 @@ def userManagement():
             data=x
         return render_template('UserManagement.html', data=data)
     except Exception as ex:
-        logfile = open('log.txt', 'w')
-        logfile.write("userManagement Error:"+str(ex))
-        logfile.close()
         insert_document("userManagement",str(ex)) 
 
 
@@ -1021,7 +922,6 @@ def userManagementData(PageNo):
                     i[key] = str(i[key])
                 if key == "logout_time":
                     i[key] = str(i[key])
-        # if user_role=="supervisor":
         if session['logged_in_user_role']=="supervisor":
             x=[]
             for i in data:
@@ -1034,9 +934,6 @@ def userManagementData(PageNo):
         else:
             return json.dumps([],indent=2)
     except Exception as ex:
-        logfile = open('log.txt', 'w')
-        logfile.write("UserManagementData Error:"+str(ex))
-        logfile.close()
         insert_document("userManagementData",str(ex)) 
 
 @app.route('/FilterbyAgents',methods=["GET","POST"])
@@ -1089,9 +986,6 @@ def FilterbyAgents():
         else:
             return json.dumps([],indent=2)
     except Exception as ex:
-        logfile = open('log.txt', 'w')
-        logfile.write("FilterByAgents: "+str(ex))
-        logfile.close()
         insert_document("FilterbyAgents",str(ex))
 
 #to display live (online) agents
@@ -1119,7 +1013,6 @@ def user_live(PageNo):
                     i[key] = str(i[key])
                 if key == 'session_date':
                     i[key] = str(i[key])
-        # if user_role=="supervisor":
         if session['logged_in_user_role']=="supervisor":
             x=[]
             for i in data:
@@ -1134,9 +1027,6 @@ def user_live(PageNo):
             return json.dumps([],indent=2) 
         
     except Exception as ex:
-        logfile = open('log.txt', 'w')
-        logfile.write("user_live Error: "+str(ex))
-        logfile.close()
         insert_document("user_live",str(ex)) 
 
 
@@ -1155,9 +1045,6 @@ def user_list():
             data=x
         return json.dumps(data,indent=2)
     except Exception as ex:
-        logfile = open('log.txt', 'w')
-        logfile.write("users_list Error"+str(ex))
-        logfile.close()
         insert_document("user_list",str(ex))
 
 @app.route("/GetProjectName",methods = ["GET"])
@@ -1166,9 +1053,6 @@ def GetProjectName():
         project_names = list(db["master"].distinct("project_name"))
         return json.dumps(project_names,indent=2)
     except Exception as ex:
-        logfile = open('log.txt', 'w')
-        logfile.write("GetProjec Name error"+str(ex))
-        logfile.close()
         insert_document("GetProjectName",str(ex))
 
 @app.route('/FilterbyViolation',methods=["POST"])
@@ -1209,9 +1093,6 @@ def FilterbyViolation():
         else:
             return json.dumps([],indent=2)
     except Exception as ex:
-        logfile = open('log.txt', 'w')
-        logfile.write("FilterByViolation Error"+(str(ex)))
-        logfile.close()
         insert_document("FilterbyViolation",str(ex))
     
 @app.route("/LogOut",methods = ["GET"])
@@ -1221,9 +1102,6 @@ def LogOut():
         session.pop('logged_in_user_id', None)       
         return render_template("login.html")
     except Exception as ex:
-        logfile = open('log.txt', 'w')
-        logfile.write("Logout Page:"+(str(ex)))
-        logfile.close()
         insert_document("LogOut",str(ex))
        
 @app.route("/UploadExcel",methods=["POST"])
@@ -1263,9 +1141,6 @@ def UploadExcel():
             return json.dumps({"Status":"Success"})
     except Exception as ex:
         insert_document("Upload Excel",str(ex))
-        logfile = open('log.txt', 'w')
-        logfile.write("Upload Excel:"+(str(ex)))
-        logfile.close()
           
 @app.route("/UploadImage",methods=["POST"])
 def UploadImage():
@@ -1293,9 +1168,6 @@ def UploadImage():
             return json.dumps(emp_id_not_upload)
 
         except Exception as ex:
-            logfile = open('log.txt', 'w')
-            logfile.write("Upload Image:"+(str(ex)))
-            logfile.close()
             insert_document("Upload Image",str(ex))  
 @app.route('/DownloadAgentTemplate', methods=["GET"])
 def DownloadAgentTemplate():
@@ -1303,10 +1175,8 @@ def DownloadAgentTemplate():
         file_path = 'agent_template.xlsx'
         return send_file(file_path, as_attachment=True)
  except Exception as ex:
-        logfile = open('log.txt', 'w')
-        logfile.write("Download Agent Template:"+(str(ex)))
-        logfile.close()
         insert_document("Download Agent Template",str(ex))  
+
 @app.route('/DownloadAgentCredentialsFile', methods=["GET"])
 def DownloadAgentCredentialsFile():
  try:
@@ -1320,9 +1190,6 @@ def DownloadAgentCredentialsFile():
         file_path = 'agent_credentials.xlsx'
         return send_file(file_path, as_attachment=True)
  except Exception as ex:
-        logfile = open('log.txt', 'w')
-        logfile.write("Download Agent Credentials File:"+(str(ex)))
-        logfile.close()
         insert_document("Download Agent Credentials File",str(ex))  
 @app.route("/Error")
 def Error():
@@ -1331,7 +1198,6 @@ def Error():
 
 if __name__ == "__main__":
     #app.run(host="localhost",port=5000, debug=True)#port=443,
-
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
     
