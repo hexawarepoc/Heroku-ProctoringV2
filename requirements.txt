@@ -17,7 +17,6 @@ Werkzeug==2.1.1
 wincertstore==0.2
 yarg==0.1.9
 zipp==3.8.0
-bcrypt==3.1.2
 flask-bcrypt==1.0.1
 flask_talisman==1.0.0
 flask_wtf==1.0.1
