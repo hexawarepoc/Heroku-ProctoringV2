@@ -24,9 +24,8 @@ import pandas as pd
 from flask_wtf.csrf import CSRFProtect
 from wsgiref.simple_server import ServerHandler
 from typing import Any, Dict
-import urllib.request
 
-
+import os
 ServerHandler.server_software = "Fake Server Name Here"
 OVERRIDE_HTTP_HEADERS: Dict[str, Any] = {"Server":None}
 mimetypes.add_type('application/javascript', '.js')
@@ -59,7 +58,7 @@ def remove_header(response):
      return response
 
 def insert_document(func_name,error):
-    generated_at="local"                                                                                               # change generated_at when deploying to "WEB-APP"
+    generated_at="WEB-APP"                                                                                               # change generated_at when deploying to "WEB-APP"
     data = {"function_name":func_name,"error_msg":error,"error_timing":datetime.now(),"generated_at":generated_at}
     db.app_logs.insert_one(data)
     return data       
@@ -1198,7 +1197,11 @@ def UploadExcel():
         df=pd.DataFrame(def_dict)
         salt = bcrypt.gensalt()
         for i,r in df.iterrows():
-            emp=str(r["emp_id"])[3:6]
+            try:
+                emp=str(r["emp_id"])[3:6]
+            except :
+                print("EMP id not long enough------",ex)
+                emp=str(r["emp_id"])
             name=str(r["first_name"]).lower()
             user_name=str(r["first_name"]).capitalize()+str(' ')+str(r["last_name"]).capitalize()
             df.loc[i,["user_name"]]=user_name
@@ -1292,4 +1295,5 @@ if __name__ == "__main__":
     #app.run(host="localhost",port=5000, debug=True)#port=443,
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
+
 
