@@ -24,7 +24,7 @@ import pandas as pd
 from flask_wtf.csrf import CSRFProtect
 from wsgiref.simple_server import ServerHandler
 from typing import Any, Dict
-
+import traceback
 import os
 ServerHandler.server_software = "Fake Server Name Here"
 OVERRIDE_HTTP_HEADERS: Dict[str, Any] = {"Server":None}
@@ -1068,6 +1068,7 @@ def LogOut():
         print(ex)
         insert_document("LogOut-------",str(ex))
        
+
 @app.route("/UploadExcel",methods=["POST"])
 def UploadExcel():
     try:
@@ -1076,40 +1077,47 @@ def UploadExcel():
         for d in agent_data:
             for key,value in d.items():
                 def_dict[key].append(value)
-        df=pd.DataFrame(def_dict)
+        try:
+            df=pd.DataFrame(def_dict)
+        except Exception as ex:
+            insert_document("Upload Excel---Data Format Issue---",str(ex))
+            df=pd.DataFrame()
         salt = bcrypt.gensalt()
-        for i,r in df.iterrows():
-            try:
-                emp=str(r["emp_id"])[-3:]
-            except:
-                emp=str(r["emp_id"])
-            name=str(r["first_name"]).lower()
-            user_name=str(r["first_name"]).capitalize()+str(' ')+str(r["last_name"]).capitalize()
-            df.loc[i,["user_name"]]=user_name
-            df.loc[i,["user_id"]]=name+emp
-            df.loc[i,["password_decoded"]]=str(name+emp+"@")
-        for i in range(0,len(df)):
-            agent_data=dict(df.iloc[i,:])
-            del agent_data["first_name"]
-            del agent_data["last_name"]
-            agent_data['violation_filter']={"mobile":"on","book":"on","no_person":"on","multiple_persons":"on"}
-            agent_data["time_nopersons"]=10.0
-            agent_data["flags"]=0
-            byte_password=agent_data["password_decoded"].encode("utf-8")
-            hash = bcrypt.hashpw(byte_password,salt)
-            agent_data["password"]=hash
-            agent_data["onboarding_date"] = datetime.today()
-            agent_data["expiration_date"] = datetime.today() +  timedelta(days=365)
-            if db.master.find_one({"emp_id":agent_data["emp_id"],"role":"agent"},{"_id":0}) == []:
-                db.master.insert_one(agent_data) 
-            else:
-                break
-        return json.dumps({"Status":"Success"})
+        try:
+            for i,r in df.iterrows():
+                try:
+                    emp=str(r["emp_id"])[-3:]
+                except:
+                    emp=str(r["emp_id"])
+                name=str(r["first_name"]).lower()
+                user_name=str(r["first_name"]).capitalize()+str(' ')+str(r["last_name"]).capitalize()
+                df.loc[i,["user_name"]]=user_name
+                df.loc[i,["user_id"]]=name+emp
+                df.loc[i,["password_decoded"]]=str(name+emp+"@")
+            for i in range(0,len(df)):
+                agent_data=dict(df.iloc[i,:])
+                del agent_data["first_name"]
+                del agent_data["last_name"]
+                agent_data['violation_filter']={"mobile":"on","book":"on","no_person":"on","multiple_persons":"on"}
+                agent_data["time_nopersons"]=10.0
+                agent_data["flags"]=0
+                byte_password=agent_data["password_decoded"].encode("utf-8")
+                hash = bcrypt.hashpw(byte_password,salt)
+                agent_data["password"]=hash
+                agent_data["onboarding_date"] = datetime.today()
+                agent_data["expiration_date"] = datetime.today() +  timedelta(days=365)
+                if db.master.find_one({"emp_id":agent_data["emp_id"],"role":"agent"},{"_id":0}):
+                    break
+                else:
+                    db.master.insert_one(agent_data)
+            return json.dumps({"Status":"Success"})
+        except Exception as ex:
+            print(ex)
+            insert_document("Upload Excel---Logic Issue--",str(ex))
     except Exception as ex:
         insert_document("Upload Excel------",str(ex))
         print(ex)
-
-
+        print(traceback.format_exc())
 
 @app.route("/UploadImage",methods=["POST"])
 def UploadImage():
@@ -1128,6 +1136,7 @@ def UploadImage():
                     agent_data_new.append(obj)
                 except:
                    emp_id_not_upload.append(obj["emp_id"])
+                   print(traceback.format_exc())
                    continue
             for i in agent_data_new:
                 if i["emp_id"] in emp_id_list:
@@ -1136,7 +1145,7 @@ def UploadImage():
                     emp_id_not_upload.append(i["emp_id"])
             return json.dumps(emp_id_not_upload)
         except Exception as ex:
-            print(ex)
+            print(traceback.format_exc())
             insert_document("Upload Image--------",str(ex))  
 
 

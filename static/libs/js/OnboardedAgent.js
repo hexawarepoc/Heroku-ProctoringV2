@@ -291,7 +291,7 @@ $("#FileImage").change(function(){
        var Image= reader.result.split(',');
        obj = {
          image:Image[1],
-         emp_id:file.name.replace('.jpg', '').replace('.png', '')
+         emp_id:file.name.replace('.jpg', '').replace('.png', '').replace('.jpeg', '')
        };
        arr.push(obj);
        if (index === total - 1) {
