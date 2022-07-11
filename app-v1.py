@@ -1,15 +1,17 @@
+from datetime import datetime,date  
 from PIL import Image
 import numpy
+import face_recognition
 from collections import defaultdict
 from pymongo import MongoClient
 import base64
 from base64 import b64decode
 import datetime
 from datetime import date
-from flask import Flask,render_template, Response,request,render_template,session,send_file
+from flask import Flask, render_template, Response,request,render_template,session,send_file
 from datetime import datetime,timedelta
 import json
-import os
+import dns.resolver
 from datetime import timedelta
 import pymongo
 from bson.objectid import ObjectId
@@ -20,10 +22,10 @@ from flask_talisman import Talisman
 import mimetypes
 import pandas as pd
 from flask_wtf.csrf import CSRFProtect
-from typing import Any, Dict
 from wsgiref.simple_server import ServerHandler
-import face_recognition
+from typing import Any, Dict
 
+import os
 ServerHandler.server_software = "Fake Server Name Here"
 OVERRIDE_HTTP_HEADERS: Dict[str, Any] = {"Server":None}
 mimetypes.add_type('application/javascript', '.js')
@@ -56,7 +58,8 @@ def remove_header(response):
      return response
 
 def insert_document(func_name,error):
-    data = {"function_name":func_name,"error_msg":error,"error_timing":datetime.now()}
+    generated_at="WEB-APP"                                                                                               # change generated_at when deploying to "WEB-APP"
+    data = {"function_name":func_name,"error_msg":error,"error_timing":datetime.now(),"generated_at":generated_at}
     db.app_logs.insert_one(data)
     return data       
 
@@ -119,7 +122,6 @@ def logincheck():
                     data={"Status":"Error","Msg":"Agents dont have access to this"}
                     return json.dumps(data)
             else:
-                # return render_template("login.html",data="Invalid user_id or password")
                 data={"Status":"Error","Msg":"Invalid username or password"}
                 return json.dumps(data)
         else:
@@ -279,7 +281,7 @@ def onboarded_agents():
         return render_template("OnboardedAgent.html", ondata=all_details)                                                                                         
     except Exception as ex:
         print(ex)
-        insert_document("onboarded_agents",str(ex))       
+        insert_document("onboarded_agents---",str(ex))       
 
 
 
@@ -297,11 +299,11 @@ def OnboardedAgent(PageNo):
         if session['logged_in_user_role']=="supervisor":
             all_details = list(db.master.find({"role":"agent","reports_to":session["logged_in_user_id"]},{"_id": 0, "user_id": 1, "user_name": 1, "onboarding_date": 1,"expiration_date": 1, "facial_img": 1, 
                                                 "status": 1}).skip(offset).limit(limit))
-            len_all_details = len(all_details)
+            len_all_details = db.master.count_documents({"role":"agent","reports_to":session["logged_in_user_id"]})
         else:
             all_details = list(db.master.find({"role":"agent"},{"_id": 0, "user_id": 1, "user_name": 1, "onboarding_date": 1,"expiration_date": 1, "facial_img": 1, 
                                                 "status": 1}).skip(offset).limit(limit))  
-            len_all_details = len(all_details)
+            len_all_details = db.master.count_documents({"role":"agent"})
         for i in all_details:
             for key in i.keys():
                 if key == "onboarding_date":
@@ -322,7 +324,6 @@ def OnboardedAgent(PageNo):
         print(ex)
         insert_document("OnboardedAgent",str(ex))  
                                                                    
-
 #get the list of onboarded agents based on status
 @app.route('/FilterOnboardedAgent',methods=["POST"])
 def FilterOnboardedAgent():
@@ -336,55 +337,53 @@ def FilterOnboardedAgent():
         else:
             offset=((int(pageNo)) * limit) - limit
             offset=offset -1 
-        
         if session['logged_in_user_role']=="supervisor":
             if  status != "" and name != "": 
                 query_result=list(db["master"].find({"status":status,"role":"agent","reports_to":session['logged_in_user_id'],"user_name":{"$regex":name}},{"_id": 0, "user_id": 1, "user_name": 1,
                 "onboarding_date": 1, "expiration_date": 1, 
                 "facial_img": 1, "status": 1}).sort("onboarding_date",pymongo.DESCENDING).skip(offset).limit(limit))    
-                num_rows=len(query_result)
+                num_rows=db["master"].count_documents({"status":status,"role":"agent","reports_to":session['logged_in_user_id'],"user_name":{"$regex":name}})
             elif name != "" and  status== "":
                 query_result=list(db["master"].find({"user_name":{"$regex":name},"reports_to":session['logged_in_user_id'],"role":"agent"},{"_id": 0, "user_id": 1, "user_name": 1,
                 "onboarding_date": 1, "expiration_date": 1, 
                 "facial_img": 1, "status": 1}).sort("onboarding_date",pymongo.DESCENDING).skip(offset).limit(limit))    
-                num_rows=len(query_result)
+                num_rows=db["master"].count_documents({"status":status,"role":"agent","reports_to":session['logged_in_user_id'],"user_name":{"$regex":name}})
 
             elif status != "" and name =="":
                 query_result=list(db["master"].find({"status":status,"reports_to":session['logged_in_user_id'],"role":"agent"},{"_id": 0, "user_id": 1, "user_name": 1,
                 "onboarding_date": 1, "expiration_date": 1, 
                 "facial_img": 1, "status": 1}).sort("onboarding_date",pymongo.DESCENDING).skip(offset).limit(limit))    
-                num_rows=len(query_result)
+                num_rows=db["master"].count_documents({"status":status,"role":"agent","reports_to":session['logged_in_user_id'],"user_name":{"$regex":name}})
         
             else:
                 query_result=list(db["master"].find({"role":"agent","reports_to":session['logged_in_user_id']},{"_id": 0, "user_id": 1, "user_name": 1,
                 "onboarding_date": 1, "expiration_date": 1, 
                 "facial_img": 1, "status": 1}).sort("onboarding_date",pymongo.DESCENDING).skip(offset).limit(limit))    
-                num_rows=len(query_result)
+                num_rows=db["master"].count_documents({"status":status,"role":"agent","reports_to":session['logged_in_user_id'],"user_name":{"$regex":name}})
         else:
 
             if  status != "" and name != "": 
                 query_result=list(db["master"].find({"status":status,"role":"agent","user_name":{"$regex":name}},{"_id": 0, "user_id": 1, "user_name": 1,
                 "onboarding_date": 1, "expiration_date": 1, 
                 "facial_img": 1, "status": 1}).sort("onboarding_date",pymongo.DESCENDING).skip(offset).limit(limit))    
-                num_rows=len(query_result)
+                num_rows=db["master"].count_documents({"status":status,"role":"agent","user_name":{"$regex":name}})
 
             elif name != "" and  status== "":
                 query_result=list(db["master"].find({"user_name":{"$regex":name},"role":"agent"},{"_id": 0, "user_id": 1, "user_name": 1,
                 "onboarding_date": 1, "expiration_date": 1, 
                 "facial_img": 1, "status": 1}).sort("onboarding_date",pymongo.DESCENDING).skip(offset).limit(limit))    
-                num_rows=len(query_result)
+                num_rows=db["master"].count_documents({"status":status,"role":"agent","user_name":{"$regex":name}})
 
             elif status != "" and name =="":
                 query_result=list(db["master"].find({"status":status,"role":"agent"},{"_id": 0, "user_id": 1, "user_name": 1,
                 "onboarding_date": 1, "expiration_date": 1, 
                 "facial_img": 1, "status": 1}).sort("onboarding_date",pymongo.DESCENDING).skip(offset).limit(limit))    
-                num_rows=len(query_result)
-        
+                num_rows=db["master"].count_documents({"status":status,"role":"agent","user_name":{"$regex":name}})
             else:
                 query_result=list(db["master"].find({"role":"agent"},{"_id": 0, "user_id": 1, "user_name": 1,
                 "onboarding_date": 1, "expiration_date": 1, 
                 "facial_img": 1, "status": 1}).sort("onboarding_date",pymongo.DESCENDING).skip(offset).limit(limit))    
-                num_rows=len(query_result)
+                num_rows=db["master"].count_documents({"status":status,"role":"agent","user_name":{"$regex":name}})
 
         for i in query_result:
             for key in i.keys():
@@ -394,13 +393,11 @@ def FilterOnboardedAgent():
                     i[key]=str(i[key].date())
                 if key == "facial_img":
                     i["facial_img"] = (base64.b64encode(i[key])).decode('utf-8')
-        
         if(num_rows and query_result):
             total={"total_rows":num_rows,"data":query_result} 
             return json.dumps(total,indent=2)
         else:
             return json.dumps([],indent=2)
-
     except Exception as ex:
         print(ex)
         insert_document("FilterOnboardedAgent",str(ex))    
@@ -459,29 +456,27 @@ def agentdetails_home():
 #filter agentwise results based on project name and date
 @app.route("/AgentListData/<PageNo>",methods=["GET"])
 def AgentListData(PageNo):
-    try: 
-        limit=3
-        offset=0
-        if(PageNo == "1"):
-            #offset=((int(PageNo)) * limit) - limit
-            pass
-        else:
-            #offset=((int(PageNo)) * limit) - limit
-            limit=3*int(PageNo)
-            offset=limit-3
-        if not session.get("logged_in_user_role"):
-            return render_template("login.html",data="Session expired.Please login again.")
-        if session['logged_in_user_role']=="supervisor":
-            data=list(db.dailySession.aggregate(
-                    [{"$match": {
-                            "project_id":session["user_project_id"],
-                            "reports_to":session["logged_in_user_id"]
-                             } },
-                    {"$group": {"_id": {"name":"$user_id","project": "$project_name"},
-                            "total_hours": {"$sum": "$total_hours"},"billable_hours":{"$sum":"$billable_hours"},
-                            "non_billable_hours":{"$sum":"$non_billable hours"},
-                            "COUNT": {"$sum": 1}}},
-                            {"$sort":{"_id" :-1}}]))
+    limit=3
+    offset=0
+    if(PageNo == "1"):
+        pass
+    else:
+        limit=3*int(PageNo)
+        offset=limit-3
+    if not session.get("logged_in_user_role"):
+        return render_template("login.html",data="Session expired.Please login again.")
+    if session['logged_in_user_role']=="supervisor":
+        data=list(db.dailySession.aggregate(
+                [{"$match": {
+                        "project_id":session["user_project_id"],
+                        "reports_to":session["logged_in_user_id"]
+                            } },
+                {"$group": {"_id": {"name":"$user_id","project": "$project_name"},
+                        "total_hours": {"$sum": "$total_hours"},"billable_hours":{"$sum":"$billable_hours"},
+                        "non_billable_hours":{"$sum":"$non_billable hours"},
+                        "COUNT": {"$sum": 1}}},
+                        {"$sort":{"_id" :-1}}]))
+        try: 
             flag_data=list(db.master.aggregate(
                 [{"$match":{ "role":"agent"}},
                 {"$group": {"_id": {"name":"$user_id","flags": "$flags"}}}]))
@@ -490,22 +485,22 @@ def AgentListData(PageNo):
                 for j in flag_data:
                     if i["_id"]["name"]==j["_id"]["name"]:
                         i["flags"]=j["_id"]["flags"]
-            data=data[offset:limit]  
-        else:
-            data=list(db.dailySession.aggregate(
-                [{"$match": {
-                             "project_id":session["user_project_id"]
-                            }
-                            },
-                            {                                                                                                                                                                                   
-                 "$group": {
-                            "_id": {"name":"$user_id","project": "$project_name"},
-                            "total_hours": {"$sum": "$total_hours"},
-                            "billable_hours":{"$sum":"$billable_hours"},
-                            "non_billable_hours":{"$sum":"$non_billable hours"},
-                            "COUNT": {"$sum": 1 }}},
-                            {"$sort":{"_id" :-1}}]))
-            
+        except Exception as ex:
+            print(ex)
+            insert_document("AgentListData-flag data  ---- ",str(ex))
+        data=data[offset:limit]  
+    else:
+        data=list(db.dailySession.aggregate(
+            [{"$match": {
+                            "project_id":session["user_project_id"]}},{                                                                                                                                                                                   
+                "$group": {
+                        "_id": {"name":"$user_id","project": "$project_name"},
+                        "total_hours": {"$sum": "$total_hours"},
+                        "billable_hours":{"$sum":"$billable_hours"},
+                        "non_billable_hours":{"$sum":"$non_billable hours"},
+                        "COUNT": {"$sum": 1 }}},
+                        {"$sort":{"_id" :-1}}]))
+        try:
             flag_data=list(db.master.aggregate(
                 [{"$match":{ "role":"agent"}},
                 {"$group": {"_id": {"name":"$user_id","flags": "$flags"}}}]))
@@ -514,14 +509,19 @@ def AgentListData(PageNo):
                 for j in flag_data:
                     if i["_id"]["name"]==j["_id"]["name"]:
                         i["flags"]=j["_id"]["flags"] 
-            data=data[offset:limit]
+        except Exception as ex:
+            print(ex)
+            insert_document("AgentListData----flag data----",str(ex))
+        data=data[offset:limit]
+    try:
         for i in data:
             i["_id"]["user_name"]=list(db.master.find({"role":"agent","user_id":i["_id"]["name"]},{"user_name":1,"_id":0}))[0]["user_name"]
             i["_id"]["chart_name"]=i["_id"]["name"].replace(" ","") 
-        return json.dumps(data)
     except Exception as ex:
         print(ex)
-        insert_document("AgentListData",str(ex))
+        insert_document("AgentListData------",str(ex))
+        data=[]
+    return json.dumps(data)
 
 
 @app.route("/GetName")
@@ -532,49 +532,29 @@ def GetName():
                     [{                          
                 "$match": {
                     "project_id":session["user_project_id"],
-                    "reports_to": session["logged_in_user_id"]
-                    }},
-                    {"$group":
-                    {"_id": 
-                    {"name":"$user_id","project": "$project_name"},                                                                                                                                                                                                                                                                                                
-                            "total_hours": {
-                            "$sum": "$total_hours"},                                                                           
-                            "billable_hours":{
-                            "$sum":"$billable_hours"},
-                            "breaks":{
-                            "$sum":"$breaks"
-                            },                                                                                                                                                                  
-                            "non_billable_hours":{
-                            "$sum":"$non_billable hours"},
-                            "COUNT": {
-                            "$sum": 1
-                            }}}])),
+                    "reports_to": session["logged_in_user_id"]}},
+                    {"$group":{"_id": {"name":"$user_id","project": "$project_name"},"total_hours": {"$sum": "$total_hours"},
+                    "billable_hours":{"$sum":"$billable_hours"},"breaks":{"$sum":"$breaks"},                                                                                                                                                                  
+                            "non_billable_hours":{"$sum":"$non_billable hours"},"COUNT": {"$sum": 1}}}])),
         else:
             data=list(db.dailySession.aggregate(
-                    [{"$group": {
-                    "_id": {
-                    "name":"$user_id",
-                    "project": "$user_project"
-                    },                                                                                                                                                                                                                                                             
-                    "total_hours": {
-                    "$sum": "$total_hours"},
-                    "billable_hours":{
-                    "$sum":"$billable_hours"
-                    },
-                    "breaks":{
-                            "$sum":"$breaks"
-                            },
-                    "non_billable_hours":{                                                                                                                                                                                                                                                                                                 
-                            "$sum":"$non_billable hours"},
-                            "COUNT": {"$sum": 1}}}])),
-        for j in data:
-            for i in j:
-                i["_id"]["user_name"]=list(db.master.find({"role":"agent","user_id":i["_id"]["name"]},{"user_name":1,"_id":0}))[0]["user_name"]
-                i["_id"]["chart_name"]=i["_id"]["name"].replace(" ","")
+                    [{"$group": {"_id": {"name":"$user_id","project": "$user_project"}, "total_hours": {
+                    "$sum": "$total_hours"},"billable_hours":{
+                    "$sum":"$billable_hours"},
+                    "breaks":{"$sum":"$breaks"},
+                    "non_billable_hours":{"$sum":"$non_billable hours"},"COUNT": {"$sum": 1}}}]))
+        try:
+            for j in data:
+                for i in j:
+                    i["_id"]["user_name"]=list(db.master.find({"role":"agent","user_id":i["_id"]["name"]},{"user_name":1,"_id":0}))[0]["user_name"]
+                    i["_id"]["chart_name"]=i["_id"]["name"].replace(" ","")
+        except Exception as ex:
+            print(ex)
+            insert_document("GetName-for loop---",str(ex)) 
         return json.dumps(data[0])
     except Exception as ex:
         print(ex)
-        insert_document("GetName",str(ex))  
+        insert_document("GetName----",str(ex))  
 
 
 
@@ -584,10 +564,7 @@ def GetNameBYProject(project):
         data=list(db.dailySession.aggregate(
                 [{
                 "$match": {
-                        "project_name":project,
-                        # "date": {"$gte":time_from,"$lte":time_to}
-                }
-                }, {
+                        "project_name":project}}, {
                 "$group": {
                         "_id": {"name":"$user_id","project": "$project_name"},
                         "total_hours": {
@@ -597,15 +574,18 @@ def GetNameBYProject(project):
                         "COUNT": {"$sum": 1}}
                 }]
         )),
-        for j in data:
-            for i in j:
-                i["_id"]["user_name"]=list(db.master.find({"role":"agent","user_id":i["_id"]["name"]},{"user_name":1,"_id":0}))[0]["user_name"]
-                i["_id"]["chart_name"]=i["_id"]["name"].replace(" ","")
-        
+        try:
+            for j in data:
+                for i in j:
+                    i["_id"]["user_name"]=list(db.master.find({"role":"agent","user_id":i["_id"]["name"]},{"user_name":1,"_id":0}))[0]["user_name"]
+                    i["_id"]["chart_name"]=i["_id"]["name"].replace(" ","")
+        except Exception as ex:
+            print(ex)
+            insert_document("GetNameBYProject--- For loop",str(ex)) 
         return json.dumps(data[0],indent=2)
     except Exception as ex:
         print(ex)
-        insert_document("GetNameBYProject",str(ex)) 
+        insert_document("GetNameBYProject---",str(ex)) 
    
 
 
@@ -623,103 +603,120 @@ def projectagentdetails(project):
                             "total_hours": {"$sum": "$total_hours"},"billable_hours":{"$sum":"$billable_hours"},
                             "non_billable_hours":{"$sum":"$non_billable hours"},
                             "COUNT": {"$sum": 1}}}]))
-            flag_data=list(db.master.aggregate(
-                [{"$match":{ "role":"agent"}},
-                {"$group": {"_id": {"name":"$user_id","flags": "$flags"}}}]))
-            for i in data:
-                i["flags"]=0
-                for j in flag_data:
-                    if i["_id"]["name"]==j["_id"]["name"]:
-                        i["flags"]=j["_id"]["flags"]  
+            try:
+                flag_data=list(db.master.aggregate(
+                    [{"$match":{ "role":"agent"}},
+                    {"$group": {"_id": {"name":"$user_id","flags": "$flags"}}}]))
+                for i in data:
+                    i["flags"]=0
+                    for j in flag_data:
+                        if i["_id"]["name"]==j["_id"]["name"]:
+                            i["flags"]=j["_id"]["flags"]  
+            except Exception as ex:
+                print(ex)
+                insert_document("projectagentdetails-flagdata-----",str(ex)) 
         else:
             data=list(db.dailySession.aggregate(                                                                                                           
                 [{"$match": {
-                "project_name":project
-                }
-                },                                                                                                                                                                                                                               
+                "project_name":project}},                                                                                                                                                                                                                               
                 {"$group": {
                             "_id": {"name":"$user_id","project": "$project_name"},
                             "total_hours": {"$sum": "$total_hours"},
                             "billable_hours":{"$sum":"$billable_hours"},
                             "non_billable_hours":{"$sum":"$non_billable hours"},
                             "COUNT": {"$sum": 1 }}}]))
-            flag_data=list(db.master.aggregate(
-                [{"$match":{ "role":"agent"}},
-                {"$group": {"_id": {"name":"$user_id","flags": "$flags"}}}]))
+            try:
+                flag_data=list(db.master.aggregate(
+                    [{"$match":{ "role":"agent"}},
+                    {"$group": {"_id": {"name":"$user_id","flags": "$flags"}}}]))
+                for i in data:
+                    i["flags"]=0
+                    for j in flag_data:
+                        if i["_id"]["name"]==j["_id"]["name"]:
+                            i["flags"]=j["_id"]["flags"]  
+            except Exception as ex:
+                print(ex)
+                insert_document("projectagentdetails-flagdata-----",str(ex)) 
+        try:
             for i in data:
-                i["flags"]=0
-                for j in flag_data:
-                    if i["_id"]["name"]==j["_id"]["name"]:
-                        i["flags"]=j["_id"]["flags"]  
-        for i in data:
-            i["_id"]["user_name"]=list(db.master.find({"role":"agent","user_id":i["_id"]["name"]},{"user_name":1,"_id":0}))[0]["user_name"]
-            i["_id"]["chart_name"]=i["_id"]["name"].replace(" ","") 
+                i["_id"]["user_name"]=list(db.master.find({"role":"agent","user_id":i["_id"]["name"]},{"user_name":1,"_id":0}))[0]["user_name"]
+                i["_id"]["chart_name"]=i["_id"]["name"].replace(" ","") 
+        except Exception as ex:
+                print(ex)
+                insert_document("projectagentdetails-End for loop------",str(ex))
         return render_template("ProjectAgentList.html", data=data)
     except Exception as ex:
         print(ex)
-        insert_document("projectagentdetails",str(ex)) 
+        insert_document("projectagentdetails---",str(ex)) 
 
 
 #agent view along with filters 
 @app.route("/FiltersAgentList",methods=["POST"])
 def FiltersAgentList():
-    try:
-        Project= request.form["Project"]
-        if not Project:
-            Project=session["user_project"]
-        fro= request.form["fro"]
-        to= request.form["to"]
-        todays_date = datetime.now()
-        time_from = datetime.strptime(fro, "%Y-%m-%d").date()
-        time_to=datetime.strptime(to, "%Y-%m-%d").date()
-        time_from=datetime.combine(time_from,datetime.min.time())
-        time_to=datetime.combine(time_to,datetime.min.time())
-        if session['logged_in_user_role']=="supervisor":
-            data=list(db.dailySession.aggregate(
-                    [{"$match": {
-                            "project_name":Project,
-                            "reports_to": session["logged_in_user_id"],
-                            "session_date": {"$gte":time_from,"$lte":time_to} } },
-                    {"$group": {"_id": {"name":"$user_id","project": "$project_name"},
-                            "total_hours": {"$sum": "$total_hours"},"billable_hours":{"$sum":"$billable_hours"},
-                            "non_billable_hours":{"$sum":"$non_billable hours"},
-                            "COUNT": {"$sum": 1}}}]))
-            flag_data=list(db.master.aggregate(
-                [{"$match":{ "role":"agent"}},
-                {"$group": {"_id": {"name":"$user_id","flags": "$flags"}}}]))
-            for i in data:
-                i["flags"]=0
-                for j in flag_data:
-                    if i["_id"]["name"]==j["_id"]["name"]:
-                        i["flags"]=j["_id"]["flags"]  
-        else:
-            data=list(db.dailySession.aggregate(
+    Project= request.form["Project"]
+    if not Project:
+        Project=session["user_project"]
+    fro= request.form["fro"]
+    to= request.form["to"]
+    time_from = datetime.strptime(fro, "%Y-%m-%d").date()
+    time_to=datetime.strptime(to, "%Y-%m-%d").date()
+    time_from=datetime.combine(time_from,datetime.min.time())
+    time_to=datetime.combine(time_to,datetime.min.time())
+    if session['logged_in_user_role']=="supervisor":
+        data=list(db.dailySession.aggregate(
                 [{"$match": {
-                            "project_name":Project,
-                            "session_date": {"$gte":time_from,"$lte":time_to}}},
-                            {                                                                                                                                                                                   
-                 "$group": {
-                            "_id": {"name":"$user_id","project": "$project_name"},
-                            "total_hours": {"$sum": "$total_hours"},
-                            "billable_hours":{"$sum":"$billable_hours"},
-                            "non_billable_hours":{"$sum":"$non_billable hours"},
-                            "COUNT": {"$sum": 1 }}}]))
-            
-            flag_data=list(db.master.aggregate(
-                [{"$match":{ "role":"agent"}},
-                {"$group": {"_id": {"name":"$user_id","flags": "$flags"}}}]))
+                        "project_name":Project,
+                        "reports_to": session["logged_in_user_id"],
+                        "session_date": {"$gte":time_from,"$lte":time_to} } },
+                {"$group": {"_id": {"name":"$user_id","project": "$project_name"},
+                        "total_hours": {"$sum": "$total_hours"},"billable_hours":{"$sum":"$billable_hours"},
+                        "non_billable_hours":{"$sum":"$non_billable hours"},
+                        "COUNT": {"$sum": 1}}}]))
+        flag_data=list(db.master.aggregate(
+            [{"$match":{ "role":"agent"}},
+            {"$group": {"_id": {"name":"$user_id","flags": "$flags"}}}]))
+        try:
             for i in data:
                 i["flags"]=0
                 for j in flag_data:
                     if i["_id"]["name"]==j["_id"]["name"]:
                         i["flags"]=j["_id"]["flags"]  
+        except Exception as ex:
+            print(ex)
+            insert_document("FilterAgentList-----",str(ex)) 
+    else:
+        data=list(db.dailySession.aggregate(
+            [{"$match": {
+                        "project_name":Project,
+                        "session_date": {"$gte":time_from,"$lte":time_to}}},
+                        {                                                                                                                                                                                   
+                "$group": {
+                        "_id": {"name":"$user_id","project": "$project_name"},
+                        "total_hours": {"$sum": "$total_hours"},
+                        "billable_hours":{"$sum":"$billable_hours"},
+                        "non_billable_hours":{"$sum":"$non_billable hours"},
+                        "COUNT": {"$sum": 1 }}}]))
+        
+        flag_data=list(db.master.aggregate(
+            [{"$match":{ "role":"agent"}},
+            {"$group": {"_id": {"name":"$user_id","flags": "$flags"}}}]))
+        try:
+            for i in data:
+                i["flags"]=0
+                for j in flag_data:
+                    if i["_id"]["name"]==j["_id"]["name"]:
+                        i["flags"]=j["_id"]["flags"]  
+        except Exception as ex:
+            print(ex)
+            insert_document("FilterAgentList----",str(ex)) 
+    try:
         for i in data:
             i["_id"]["user_name"]=list(db.master.find({"role":"agent","user_id":i["_id"]["name"]},{"user_name":1,"_id":0}))[0]["user_name"]
             i["_id"]["chart_name"]=i["_id"]["name"].replace(" ","") 
-        return json.dumps(data)
     except Exception as ex:
         print(ex)
-        insert_document("FilterAgentList",str(ex)) 
+        insert_document("FilterAgentList---",str(ex)) 
+    return json.dumps(data)
 
 #display all the violation details.
 @app.route('/ViolationMgmt.html',methods=["GET"])
@@ -729,13 +726,12 @@ def violation_details():
             return render_template("login.html",data="Session expired.Please login again.")
 
         if session['logged_in_user_role']=="supervisor":
-            query_result = list(db.violation.find({"marked_as":"TBM","reports_to":session['logged_in_user_id']}, {"_id": 1, "violation_type": 1,"user_id":1, "user_name": 1, "marked_as": 1,
+            query_result = list(db.violation.find({"marked_as":"TBM","reports_to":session['logged_in_user_id']}, 
+            {"_id": 1, "violation_type": 1,"user_id":1, "user_name": 1, "marked_as": 1,
                                                         "reviewed_by": 1, "violation_image": 1,"project_name":1,"created_date":1}))              
-            query_result2 = len(query_result)
         else:
-            query_result = list(db.violation.find({"marked_as":"TBM"}, {"_id": 1, "violation_type": 1,"user_id":1, "user_name": 1, "marked_as": 1,
-                                                        "reviewed_by": 1, "violation_image": 1,"project_name":1,"created_date":1}))              
-        
+            query_result = list(db.violation.find({"marked_as":"TBM"}, 
+            {"_id": 1, "violation_type": 1,"user_id":1, "user_name": 1, "marked_as": 1,"reviewed_by": 1, "violation_image": 1,"project_name":1,"created_date":1}))              
         for i in query_result:
             i["_id"] = str(i["_id"])
             i["created_date"]=str(i["created_date"].date())
@@ -744,28 +740,27 @@ def violation_details():
         return render_template("ViolationMgmt.html", data=query_result)
     except Exception as ex:
         print(ex)
-        insert_document("violation_details",str(ex)) 
+        insert_document("violation_details----",str(ex)) 
 
 @app.route('/ViolationMgmt/<PageNo>',methods=["GET"])
 def ViolationMgmt(PageNo):
+    if not session.get("logged_in_user_role"):
+        return render_template("login.html",data="Session expired. Please login again.")
+    limit=10
+    if(PageNo == "1"):
+        offset=((int(PageNo)) * limit) - limit
+    else:
+        offset=((int(PageNo)) * limit) - limit
+        offset=offset -1
+    if session['logged_in_user_role']=="supervisor":
+        query_result = list(db.violation.find({"marked_as":"TBM","reports_to":session['logged_in_user_id']}, {"_id": 1, "violation_type": 1,"user_id":1, "user_name": 1, "marked_as": 1,
+                                                    "reviewed_by": 1, "violation_image": 1,"project_name":1,"created_date":1}).sort("created_date",pymongo.DESCENDING).skip(offset).limit(limit))              
+        query_result2 = db.violation.count_documents({"marked_as":"TBM","reports_to":session['logged_in_user_id']})
+    else:
+        query_result = list(db.violation.find({"marked_as":"TBM"}, {"_id": 1, "violation_type": 1,"user_id":1, "user_name": 1, "marked_as": 1,
+                                                    "reviewed_by": 1, "violation_image": 1,"project_name":1,"created_date":1}).sort("created_date",pymongo.DESCENDING).skip(offset).limit(limit))              
+        query_result2 = db.violation.count_documents({"marked_as":"TBM"})
     try:
-        print("Violation Management API called")
-        if not session.get("logged_in_user_role"):
-            return render_template("login.html",data="Session expired. Please login again.")
-        limit=10
-        if(PageNo == "1"):
-            offset=((int(PageNo)) * limit) - limit
-        else:
-            offset=((int(PageNo)) * limit) - limit
-            offset=offset -1 
-        if session['logged_in_user_role']=="supervisor":
-            query_result = list(db.violation.find({"marked_as":"TBM","reports_to":session['logged_in_user_id']}, {"_id": 1, "violation_type": 1,"user_id":1, "user_name": 1, "marked_as": 1,
-                                                        "reviewed_by": 1, "violation_image": 1,"project_name":1,"created_date":1}).sort("created_date",pymongo.DESCENDING).skip(offset).limit(limit))              
-            query_result2 = len(query_result)
-        else:
-            query_result = list(db.violation.find({"marked_as":"TBM"}, {"_id": 1, "violation_type": 1,"user_id":1, "user_name": 1, "marked_as": 1,
-                                                        "reviewed_by": 1, "violation_image": 1,"project_name":1,"created_date":1}).sort("created_date",pymongo.DESCENDING).skip(offset).limit(limit))              
-            query_result2 = len(query_result)
         for i in query_result:
             i["_id"] = str(i["_id"])
             i["created_date"]=str(i["created_date"].date())
@@ -774,30 +769,33 @@ def ViolationMgmt(PageNo):
                 i["user_name"]=list(db.master.find({"role":"agent","user_id":i["user_id"]},{"user_name":1,"_id":0}))[0]["user_name"]
             except:
                 continue
-        if(query_result and query_result2):
-            total={"total_rows":query_result2,"data":query_result}
-            return json.dumps(total,indent=2)
-        else:
-            return json.dumps([],indent=2)
     except Exception as ex:
         print(ex)
-        insert_document("violation_details(PageNo)",str(ex)) 
+        insert_document("violation_details(PageNo)---",str(ex)) 
+    if(query_result and query_result2):
+        total={"total_rows":query_result2,"data":query_result}
+        return json.dumps(total,indent=2)
+    else:
+        return json.dumps([],indent=2)
+    
         
 
-
-#display  details based on project name and from and to date
-### THIS API IS NOT IN USE
-######################################################################################################################
 today = date.today()
-thirty_days_back= today - timedelta(days=60)
+thirty_days_back= today - timedelta(days=30)
 to=str(today)
 fro=str(thirty_days_back)
 time_from = datetime.strptime(fro, "%Y-%m-%d").date()
+
+
+
+
+"""### THIS API IS NOT IN USE"""
+#display  details based on project name and from and to date
+######################################################################################################################
 @app.route('/ViolationMgmt.html/<string:project>',defaults={"fro":fro,"to":to},methods=["GET"])
 @app.route("/ViolationMgmt.html/<string:project>/<string:fro>/<string:to>")
 def violation_details_filter(project,fro,to):
     try:
-        print("violation api called with to and fro")
         time_from = datetime.strptime(fro, "%Y-%m-%d").date()
         time_to=datetime.strptime(to, "%Y-%m-%d").date()
         time_from=datetime.combine(time_from,datetime.min.time())
@@ -817,17 +815,14 @@ def violation_details_filter(project,fro,to):
                 if i["user_id"] in session["agent_ids"]:
                     x.append(i)
             data=x
-            print(len(data))
         return render_template("ViolationMgmt.html", data=data)
     except Exception as ex:
-        insert_document("violation_details_filter",str(ex)) 
-
+        insert_document("violation_details_filter---",str(ex)) 
 ################################################################################################################################################
 
 
 @app.route('/escalated_agents/<PageNo>',methods=["GET"])
 def escalated_agents(PageNo):
-    try:
         limit=10
         if(PageNo == "1"):
             offset=((int(PageNo)) * limit) - limit
@@ -835,46 +830,48 @@ def escalated_agents(PageNo):
             offset=((int(PageNo)) * limit) - limit
             offset=offset -1 
         dbResponse = list(db.violation.find({"marked_as":"ES",}, {"_id": 1, "violation_type": 1, "user_id": 1, "marked_as": 1,
-                                                  "escalated_by": 1 ,"violation_image":1,"project_name":1,"created_date":1}).sort("created_date",pymongo.DESCENDING).skip(offset).limit(limit))
-        dbResponse0 = db.violation.count_documents({"marked_as":"ES"})                                           
-        for i in dbResponse:
-            i["_id"] = str(i["_id"]) 
-            i["created_date"]=str(i["created_date"])
-            i["violation_image"] = (base64.b64encode(i["violation_image"])).decode('utf-8')
-            i["user_name"]=list(db.master.find({"role":"agent","user_id":i["user_id"]},{"user_name":1,"_id":0}))[0]["user_name"]
-        if session['logged_in_user_role']=="supervisor":
-            data=[]
+                                                "escalated_by": 1 ,"violation_image":1,"project_name":1,"created_date":1}).sort("created_date",pymongo.DESCENDING).skip(offset).limit(limit))
+        dbResponse0 = db.violation.count_documents({"marked_as":"ES"})
+        try:                                       
             for i in dbResponse:
-                    if i["user_id"] in session["agent_ids"]:
-                        data.append(i)
-            dbResponse=data  
+                i["_id"] = str(i["_id"]) 
+                i["created_date"]=str(i["created_date"])
+                i["violation_image"] = (base64.b64encode(i["violation_image"])).decode('utf-8')
+                i["user_name"]=list(db.master.find({"role":"agent","user_id":i["user_id"]},{"user_name":1,"_id":0}))[0]["user_name"]
+            if session['logged_in_user_role']=="supervisor":
+                data=[]
+                for i in dbResponse:
+                        if i["user_id"] in session["agent_ids"]:
+                            data.append(i)
+                dbResponse=data 
+        except Exception as ex:
+            print(ex)
+            insert_document("escalated_agents(PageNo)----",str(ex))
         if(dbResponse and dbResponse0):
             total={"total_rows":dbResponse0,"data":dbResponse} 
             return json.dumps(total,indent=2) 
         else:
             return json.dumps([],indent=2)
-    except Exception as ex:
-        print(ex)
-        insert_document("escalated_agents(PageNo)",str(ex))
-
-
-
+    
 # to update individual violations of a particulat violation image that takes in documnet ID as input
 @app.route('/ViolationMgmt/<id>/<marked_as>/<user_id>',methods=["GET"])
 def update_markedas(id,marked_as,user_id):
     try:
-        dbResponse = db.violation.update_one({"_id": ObjectId(id)},{"$set": {"marked_as":marked_as,"escalated_by":session["user_name"]}})
+        db.violation.update_one({"_id": ObjectId(id)},{"$set": {"marked_as":marked_as,"escalated_by":session["user_name"]}})
         x=list(db.violation.aggregate(
                         [{"$match":{ "user_id":user_id, 
                         "marked_as":"ES"}},
                         {"$group": {"_id": {"user_id":"$user_id","project_name": "$project_name"},
                         "COUNT": {"$sum": 1}}}]))
-        count=x[0]["COUNT"]
-        db.master.update_one({"user_id":user_id,"role":"agent"},{"$set": {"flags":count}})
+        try:
+            count=x[0]["COUNT"]
+            db.master.update_one({"user_id":user_id,"role":"agent"},{"$set": {"flags":count}})
+        except:
+            print(ex)
         return Response(response=json.dumps({"message": "marked_as field updated successfully"}))
     except Exception as ex:
         print(ex)
-        insert_document("update_markedas",str(ex))
+        insert_document("update_markedas-----",str(ex))
 
 
                                                           
@@ -888,7 +885,7 @@ def configuration():
         return render_template("Configurations.html",data = project_names)
     except Exception as ex:
         print(ex)
-        insert_document("configuration",str(ex))
+        insert_document("configuration---",str(ex))
 
 @app.route("/violation_update",methods = ["POST","GET"])
 def violation_update():
@@ -898,15 +895,13 @@ def violation_update():
         multiple=request.form["multiple"]
         no_person=request.form["no_person"]
         project_names = list(db["master"].distinct("project_name"))
-        dbResponse = db.master.update_many({"project_name":request.form["projectName"],"role":"agent"},
-                                                {"$set": {"violation_filter.mobile":mobile,\
-                                                    "violation_filter.multiple_persons":multiple,\
-                                                        "violation_filter.book":book,
-                                                        "violation_filter.no_person":no_person}})
+        db.master.update_many({"project_name":request.form["projectName"],"role":"agent"},
+                                                {"$set": {"violation_filter.mobile":mobile,"violation_filter.multiple_persons":multiple,
+                                                        "violation_filter.book":book,"violation_filter.no_person":no_person}})
         return Response(response=json.dumps({"message": "violation_filter field updated successfully"}))
     except Exception as ex:
         print(ex)
-        insert_document("violation_update",str(ex)) 
+        insert_document("violation_update-----",str(ex)) 
 
 @app.route("/GetViolation",methods = ["GET"])
 def GetViolation():
@@ -915,7 +910,7 @@ def GetViolation():
         return json.dumps(data,indent=2)
     except Exception as ex:
         print(ex)
-        insert_document("GetViolation",str(ex))
+        insert_document("GetViolation----",str(ex))
 
 @app.route("/GetProjectByConfigurations$project=<string:project_name>",methods = ["GET"])   
 def configurations_list(project_name):
@@ -924,7 +919,7 @@ def configurations_list(project_name):
         return json.dumps(data[0])
     except Exception as ex:
         print(ex)
-        insert_document("configurations_list",str(ex)) 
+        insert_document("configurations_list----",str(ex)) 
 
 
 #to display list of agents
@@ -944,7 +939,7 @@ def userManagement():
         return render_template('UserManagement.html', data=data)
     except Exception as ex:
         print(ex)
-        insert_document("userManagement",str(ex)) 
+        insert_document("userManagement-----",str(ex)) 
 
 
 @app.route('/UserManagement/<PageNo>',methods=["GET"])
@@ -961,7 +956,6 @@ def userManagementData(PageNo):
         today = datetime.combine(date.today(), datetime.min.time())
         data=list(db.dailySession.find({"session_date_string":str(today)},{"_id":0,"user_id":1,"user_name":1,"project_name":1,"login_time":1,"logout_time":1,"session_status":1}).skip(offset).limit(limit))
         data1=db.dailySession.count_documents({"session_date_string":str(today)})
-        
         for i in data:
             i["user_name"]=list(db.master.find({"role":"agent","user_id":i["user_id"]},{"user_name":1,"_id":0}))[0]["user_name"]
             for key in i.keys():
@@ -983,7 +977,7 @@ def userManagementData(PageNo):
             return json.dumps([],indent=2)
     except Exception as ex:
         print(ex)
-        insert_document("userManagementData",str(ex)) 
+        insert_document("userManagementData----",str(ex)) 
 
 @app.route('/FilterbyAgents',methods=["GET","POST"])
 def FilterbyAgents():
@@ -991,7 +985,7 @@ def FilterbyAgents():
         pageNo= request.form["pageNo"]
         name= request.form["fname"]
         project=""
-        if session['logged_in_user_role']!="super_admin":
+        if session['logged_in_user_role']=="super_admin":
             project= request.form["fProject"]
         limit=10
         if(pageNo == "1"):
@@ -1000,37 +994,48 @@ def FilterbyAgents():
             offset=((int(pageNo)) * limit) - limit
             offset=offset -1 
         today = datetime.combine(date.today(), datetime.min.time())
-        if  project != "" and name != "": 
-            data=list(db.dailySession.find({"session_date_string":str(today),"project_name":project,"user_id":{"$regex":name}},
-            {"_id": 0,"user_id": 1, "user_name": 1,"project_name":1,"login_time":1,"logout_time":1,"session_status": 1}))       #.skip(offset).limit(limit))
-            data2= db.dailySession.count_documents({"session_date_string":str(today),"project_name":project,"user_id":{"$regex":name}})
-        elif name != "" and  project== "":
-            data=list(db.dailySession.find({"session_date_string":str(today),"user_id":{"$regex":name}},
-            {"_id": 0, "user_id": 1, "user_name": 1,"project_name":1,"login_time":1,"logout_time":1,"session_status": 1}))             #.skip(offset).limit(limit))
-            data2=db.dailySession.count_documents({"session_date_string":str(today),"user_id":{"$regex":name}})
-
-        elif project != "" and name =="":
-            data=list(db.dailySession.find({"session_date_string":str(today),"project_name":project},
-            {"_id": 0, "user_id": 1, "user_name": 1,"project_name":1,"login_time":1,"logout_time":1, "session_status": 1}))               #.skip(offset).limit(limit))
-            data2=db.dailySession.count_documents({"session_date_string":str(today),"project_name":project})
+        if session['logged_in_user_role']=="supervisor":
+            if  project != "" and name != "": 
+                data=list(db.dailySession.find({"session_date_string":str(today),"reports_to":session['logged_in_user_id'],"project_name":project,"user_id":{"$regex":name}},
+                {"_id": 0,"user_id": 1, "user_name": 1,"project_name":1,"login_time":1,"logout_time":1,"session_status": 1}).skip(offset).limit(limit))
+                data2= db.dailySession.count_documents({"session_date_string":str(today),"project_name":project,"user_id":{"$regex":name}})
+            elif name != "" and  project== "":
+                data=list(db.dailySession.find({"session_date_string":str(today),"user_id":{"$regex":name},"reports_to":session['logged_in_user_id']},
+                {"_id": 0, "user_id": 1, "user_name": 1,"project_name":1,"login_time":1,"logout_time":1,"session_status": 1}).skip(offset).limit(limit))
+                data2=db.dailySession.count_documents({"session_date_string":str(today),"user_id":{"$regex":name}})
+            elif project != "" and name =="":
+                data=list(db.dailySession.find({"session_date_string":str(today),"project_name":project,"reports_to":session['logged_in_user_id']},
+                {"_id": 0, "user_id": 1, "user_name": 1,"project_name":1,"login_time":1,"logout_time":1, "session_status": 1}).skip(offset).limit(limit))
+                data2=db.dailySession.count_documents({"session_date_string":str(today),"project_name":project})
+            else:
+                data=list(db.dailySession.find({"session_date_string":str(today),"reports_to":session['logged_in_user_id']},
+                {"_id": 0, "user_id": 1, "user_name": 1,"project_name":1,"login_time":1,"logout_time":1,"session_status": 1}).skip(offset).limit(limit))
+                data2=db.dailySession.count_documents({"session_date_string":str(today)})
         else:
-            data=list(db.dailySession.find({"session_date_string":str(today)},
-            {"_id": 0, "user_id": 1, "user_name": 1,"project_name":1,"login_time":1,"logout_time":1,"session_status": 1}))              #.skip(offset).limit(limit))
-            data2=db.dailySession.count_documents({"session_date_string":str(today)})
-        if data!= []:
+            if  project != "" and name != "": 
+                data=list(db.dailySession.find({"session_date_string":str(today),"project_name":project,"user_id":{"$regex":name}},
+                {"_id": 0,"user_id": 1, "user_name": 1,"project_name":1,"login_time":1,"logout_time":1,"session_status": 1}).skip(offset).limit(limit))
+                data2= db.dailySession.count_documents({"session_date_string":str(today),"project_name":project,"user_id":{"$regex":name}})
+            elif name != "" and  project== "":
+                data=list(db.dailySession.find({"session_date_string":str(today),"user_id":{"$regex":name}},
+                {"_id": 0, "user_id": 1, "user_name": 1,"project_name":1,"login_time":1,"logout_time":1,"session_status": 1}).skip(offset).limit(limit))
+                data2=db.dailySession.count_documents({"session_date_string":str(today),"user_id":{"$regex":name}})
+            elif project != "" and name =="":
+                data=list(db.dailySession.find({"session_date_string":str(today),"project_name":project},
+                {"_id": 0, "user_id": 1, "user_name": 1,"project_name":1,"login_time":1,"logout_time":1, "session_status": 1}).skip(offset).limit(limit))
+                data2=db.dailySession.count_documents({"session_date_string":str(today),"project_name":project})
+            else:
+                data=list(db.dailySession.find({"session_date_string":str(today)},
+                {"_id": 0, "user_id": 1, "user_name": 1,"project_name":1,"login_time":1,"logout_time":1,"session_status": 1}).skip(offset).limit(limit))
+                data2=db.dailySession.count_documents({"session_date_string":str(today)})
+        if data:
             for i in data:
                 i["user_name"]=list(db.master.find({"role":"agent","user_id":i["user_id"]},{"user_name":1,"_id":0}))[0]["user_name"]
                 for key in i.keys():
                     if key == "login_time":
                         i[key] = str(i[key])
                     if key == "logout_time":
-                        i[key] = str(i[key])    
-            if session['logged_in_user_role']=="supervisor":
-                x=[]
-                for i in data:
-                    if i["user_id"] in session["agent_ids"]:
-                        x.append(i)
-                data=x
+                        i[key] = str(i[key])
             if(data and data2):
                 total={"total_rows":data2,"data":data} 
                 return json.dumps(total,indent=2)
@@ -1038,7 +1043,7 @@ def FilterbyAgents():
             return json.dumps([],indent=2)
     except Exception as ex:
         print(ex)
-        insert_document("FilterbyAgents",str(ex))
+        insert_document("FilterbyAgents-----",str(ex))
 
 #to display live (online) agents
 @app.route('/user_live/<PageNo>')
@@ -1079,7 +1084,7 @@ def user_live(PageNo):
         
     except Exception as ex:
         print(ex)
-        insert_document("user_live",str(ex)) 
+        insert_document("user_live----",str(ex)) 
 
 
 #display list of all the agents
@@ -1098,7 +1103,7 @@ def user_list():
         return json.dumps(data,indent=2)
     except Exception as ex:
         print(ex)
-        insert_document("user_list",str(ex))
+        insert_document("user_list------",str(ex))
 
 @app.route("/GetProjectName",methods = ["GET"])
 def GetProjectName():
@@ -1107,7 +1112,7 @@ def GetProjectName():
         return json.dumps(project_names,indent=2)
     except Exception as ex:
         print(ex)
-        insert_document("GetProjectName",str(ex))
+        insert_document("GetProjectName-------",str(ex))
 
 @app.route('/FilterbyViolation',methods=["POST"])
 def FilterbyViolation():
@@ -1125,20 +1130,20 @@ def FilterbyViolation():
         if session['logged_in_user_role']=="supervisor":
             if  violation != "" and name != "": 
                 query_result = list(db.violation.find({"marked_as":"TBM","reports_to":session['logged_in_user_id'],"user_name":{"$regex":name},"violation_type":violation},{"_id": 1, "violation_type": 1,"user_id":1, "user_name": 1, "marked_as": 1,
-                                                        "reviewed_by": 1, "violation_image": 1,"project_name":1,"created_date":1}).sort("created_date",pymongo.DESCENDING).skip(offset).limit(limit))
+                                                        "reviewed_by": 1,"reports_to":session['logged_in_user_id'], "violation_image": 1,"project_name":1,"created_date":1}).sort("created_date",pymongo.DESCENDING).skip(offset).limit(limit))
                 num_rows = db.violation.count_documents({"marked_as":"TBM","user_name":{"$regex":name},"violation_type":violation})
             elif name != "" and  violation== "":
                 query_result = list(db.violation.find({"marked_as":"TBM","reports_to":session['logged_in_user_id'],"user_name":{"$regex":name}}, {"_id": 1, "violation_type": 1,"user_id":1, "user_name": 1, "marked_as": 1,
                                                         "reviewed_by": 1, "violation_image": 1,"project_name":1,"created_date":1}).sort("created_date",pymongo.DESCENDING).skip(offset).limit(limit))
-                num_rows = db.violation.count_documents({"marked_as":"TBM","user_name":{"$regex":name}})
+                num_rows = db.violation.count_documents({"marked_as":"TBM","reports_to":session['logged_in_user_id'],"user_name":{"$regex":name}})
             elif violation != "" and name =="":
                 query_result = list(db.violation.find({"marked_as":"TBM","reports_to":session['logged_in_user_id'],"violation_type":violation}, {"_id": 1, "violation_type": 1,"user_id":1, "user_name": 1, "marked_as": 1,
                                                         "reviewed_by": 1, "violation_image": 1,"project_name":1,"created_date":1}).sort("created_date",pymongo.DESCENDING).skip(offset).limit(limit))
-                num_rows = db.violation.count_documents({"marked_as":"TBM","violation_type":violation})
+                num_rows = db.violation.count_documents({"marked_as":"TBM","reports_to":session['logged_in_user_id'],"violation_type":violation})
             else:
                 query_result = list(db.violation.find({"marked_as":"TBM","reports_to":session['logged_in_user_id']}, {"_id": 1,"violation_type": 1,"user_id":1, "user_name": 1, "marked_as": 1,
                                                         "reviewed_by": 1, "violation_image": 1,"project_name":1,"created_date":1}).sort("created_date",pymongo.DESCENDING).skip(offset).limit(limit))
-                num_rows = db.violation.count_documents({"marked_as":"TBM"})
+                num_rows = db.violation.count_documents({"marked_as":"TBM","reports_to":session['logged_in_user_id']})
         else:
             if  violation != "" and name != "": 
                 query_result = list(db.violation.find({"marked_as":"TBM","user_name":{"$regex":name},"violation_type":violation},{"_id": 1, "violation_type": 1,"user_id":1, "user_name": 1, "marked_as": 1,
@@ -1169,7 +1174,7 @@ def FilterbyViolation():
             return json.dumps([],indent=2)
     except Exception as ex:
         print(ex)
-        insert_document("FilterbyViolation",str(ex))
+        insert_document("FilterbyViolation-------",str(ex))
     
 @app.route("/LogOut",methods = ["GET"])
 def LogOut():
@@ -1179,47 +1184,52 @@ def LogOut():
         return render_template("login.html")
     except Exception as ex:
         print(ex)
-        insert_document("LogOut",str(ex))
+        insert_document("LogOut-------",str(ex))
        
 @app.route("/UploadExcel",methods=["POST"])
 def UploadExcel():
     try:
-            agent_data = request.json
-            def_dict=defaultdict(list)
-            for d in agent_data:
-                for key,value in d.items():
-                    def_dict[key].append(value)
-            df=pd.DataFrame(def_dict)
-            salt = bcrypt.gensalt()
-            for i,r in df.iterrows():
+        agent_data = request.json
+        def_dict=defaultdict(list)
+        for d in agent_data:
+            for key,value in d.items():
+                def_dict[key].append(value)
+        df=pd.DataFrame(def_dict)
+        salt = bcrypt.gensalt()
+        for i,r in df.iterrows():
+            try:
                 emp=str(r["emp_id"])[3:6]
-                name=str(r["first_name"]).lower()
-                user_name=str(r["first_name"]).capitalize()+str(' ')+str(r["last_name"]).capitalize()
-                df.loc[i,["user_name"]]=user_name
-                df.loc[i,["user_id"]]=name+emp
-                df.loc[i,["password_decoded"]]=str(name+emp+"@")
-            for i in range(0,len(df)):
-                agent_data=dict(df.iloc[i,:])
-                del agent_data["first_name"]
-                del agent_data["last_name"]
-                agent_data['violation_filter']={"mobile":"on","book":"on","no_person":"on","multiple_persons":"on"}
-                agent_data["time_nopersons"]=10.0
-                agent_data["flags"]=0
-                byte_password=agent_data["password_decoded"].encode("utf-8")
-                hash = bcrypt.hashpw(byte_password,salt)
-                agent_data["password"]=hash
-                agent_data["onboarding_date"] = datetime.today()
-                agent_data["expiration_date"] = datetime.today() +  timedelta(days=365)
-                if db.master.find_one({"emp_id":agent_data["emp_id"],"role":"agent"},{"_id":0}) == []:
-                    db.master.insert_one(agent_data) 
-                else:
-                     break
-                    
-            return json.dumps({"Status":"Success"})
+            except :
+                print("EMP id not long enough------",ex)
+                emp=str(r["emp_id"])
+            name=str(r["first_name"]).lower()
+            user_name=str(r["first_name"]).capitalize()+str(' ')+str(r["last_name"]).capitalize()
+            df.loc[i,["user_name"]]=user_name
+            df.loc[i,["user_id"]]=name+emp
+            df.loc[i,["password_decoded"]]=str(name+emp+"@")
+        for i in range(0,len(df)):
+            agent_data=dict(df.iloc[i,:])
+            del agent_data["first_name"]
+            del agent_data["last_name"]
+            agent_data['violation_filter']={"mobile":"on","book":"on","no_person":"on","multiple_persons":"on"}
+            agent_data["time_nopersons"]=10.0
+            agent_data["flags"]=0
+            byte_password=agent_data["password_decoded"].encode("utf-8")
+            hash = bcrypt.hashpw(byte_password,salt)
+            agent_data["password"]=hash
+            agent_data["onboarding_date"] = datetime.today()
+            agent_data["expiration_date"] = datetime.today() +  timedelta(days=365)
+            if db.master.find_one({"emp_id":agent_data["emp_id"],"role":"agent"},{"_id":0}) == []:
+                db.master.insert_one(agent_data) 
+            else:
+                break
+        return json.dumps({"Status":"Success"})
     except Exception as ex:
-        insert_document("Upload Excel",str(ex))
+        insert_document("Upload Excel------",str(ex))
         print(ex)
-          
+
+
+
 @app.route("/UploadImage",methods=["POST"])
 def UploadImage():
         agent_data = request.json
@@ -1244,21 +1254,25 @@ def UploadImage():
                 else:
                     emp_id_not_upload.append(i["emp_id"])
             return json.dumps(emp_id_not_upload)
-
         except Exception as ex:
             print(ex)
-            insert_document("Upload Image",str(ex))  
+            insert_document("Upload Image--------",str(ex))  
+
+
+
 @app.route('/DownloadAgentTemplate', methods=["GET"])
 def DownloadAgentTemplate():
- try:
+    try:
         file_path = 'agent_template.xlsx'
         return send_file(file_path, as_attachment=True)
- except Exception as ex:
+    except Exception as ex:
         print(ex)
-        insert_document("Download Agent Template",str(ex))  
+        insert_document("Download Agent Template-----",str(ex))  
+
+
 @app.route('/DownloadAgentCredentialsFile', methods=["GET"])
 def DownloadAgentCredentialsFile():
- try:
+    try:
         data=list(db.master.find({"reports_to":session['logged_in_user_id']},{"user_name":1,"user_id":1,"password_decoded":1,"emp_id":1,"_id":0}))   ## change the data bases
         def_dict=defaultdict(list)
         for d in data:
@@ -1268,17 +1282,18 @@ def DownloadAgentCredentialsFile():
         data.to_excel("agent_credentials.xlsx",index=False)
         file_path = 'agent_credentials.xlsx'
         return send_file(file_path, as_attachment=True)
- except Exception as ex:
+    except Exception as ex:
         print(ex)
-        insert_document("Download Agent Credentials File",str(ex))  
+        insert_document("Download Agent Credentials File-----",str(ex))  
+
+
 @app.route("/Error")
 def Error():
     return render_template("Error.html")
-
 
 if __name__ == "__main__":
     #app.run(host="localhost",port=5000, debug=True)#port=443,
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
-    
+
 

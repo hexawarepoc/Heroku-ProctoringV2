@@ -152,8 +152,9 @@ function LogOut() {
    $("#logged_in_user_role").val("");
    location.href = "/LogOut";
 }
+
 $(window).scroll(function() {
-   if($(window).scrollTop() == $(document).height() - $(window).height()) {
+   if($(window).scrollTop() == $(document).height() - $(window).height() && !flag) {
       count = count + 1;   
       $('#loader').removeClass('hidden');
       fetch(URL.baseUrl + '/AgentListData/'+count).then(response => response.json())

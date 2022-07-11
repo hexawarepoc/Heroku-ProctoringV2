@@ -141,33 +141,29 @@
                       </div>
                     </div>
                   </div>
-                <div class="modal" tabindex="-1" role="dialog" id="UploadImageModal">
+                <div class="modal" tabindex="-1" role="dialog" id="UploadFileModal">
                     <div class="modal-dialog" role="document">
                       <div class="modal-content">
                         <div class="modal-header">
-                          <h5 class="modal-title">Upload Image</h5>
+                          <h5 class="modal-title">Upload File</h5>
                           <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                             <span aria-hidden="true">&times;</span>
                           </button>
                         </div>
-                        <div class="cm-model-height modal-body pt-4 text-lg-center">
-                            <input type="file" id="FileImage" multiple/>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="modal" tabindex="-1" role="dialog" id="UploadExcelModal">
-                    <div class="modal-dialog" role="document">
-                      <div class="modal-content">
-                        <div class="modal-header">
-                          <h5 class="modal-title">Upload Excel</h5>
-                          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                            <span aria-hidden="true">&times;</span>
-                          </button>
-                        </div>
-                        <div class="cm-model-height modal-body pt-4 text-lg-center">
-                            <input type="file" id="FileExcel"/>
-                        </div>
+                        <div class="modal-body">
+                            <form>
+                              <div class="form-group pl-3">
+                                <label  class="col-form-label">Choose Excel&nbsp;:</label>
+                                <input type="file" id="FileExcel"/>
+                                <p class="cm-error" id="ErrFileExcel"></p>
+                              </div>
+                              <div class="form-group">
+                                <label class="col-form-label">Choose Images&nbsp;:</label>
+                                 <input type="file" id="FileImage" multiple/>
+                                 <p class="cm-error" id="ErrFileImage"></p>
+                              </div>
+                            </form>
+                          </div>
                       </div>
                     </div>
                   </div>
@@ -202,11 +198,9 @@
                     </div>
                     <div class="col-xl-6 col-lg-6 col-md-6 col-sm-6 col-6">
                         <button   id="btnCredentials" onclick="DownloadAgentCredentialsFile()" type="button" class="btn btn-primary float-right btn-sm mr-1" ><i class="fa fa-download" aria-hidden="true"></i> Credentials</button>
-                        <button  type="button" class="btn btn-primary btn-sm float-right mr-1" onclick="FileUploadImage()"><i class="fa fa-upload" aria-hidden="true"></i>
-                            Upload Image</button>
-                        <button  type="button" class="btn btn-primary btn-sm float-right mr-1" onclick="FileUploadExcel()"><i class="fa fa-upload" aria-hidden="true"></i>
-                            Upload Excel</button>
-                            <a href="{{url_for('DownloadAgentTemplate')}}" type="button" class="btn btn-primary btn-sm float-right mr-1" ><i class="fa fa-download" aria-hidden="true"></i>
+                        <button  type="button" class="btn btn-primary btn-sm float-right mr-1" onclick="UploadFileModal()"><i class="fa fa-upload" aria-hidden="true"></i>
+                            Upload File</button>
+                        <a href="{{url_for('DownloadAgentTemplate')}}" type="button" class="btn btn-primary btn-sm float-right mr-1" ><i class="fa fa-download" aria-hidden="true"></i>
                                 Template</a>
                     </div>
                 </div>

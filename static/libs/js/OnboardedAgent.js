@@ -10,7 +10,7 @@ function notify(message, type){
            from: 'top',
            align: 'right'
        },
-       delay: 2500,
+       delay: 4000,
        animate: {
                enter: 'animated fadeInRight',
                exit: 'animated fadeOutRight'
@@ -36,7 +36,7 @@ var ExcelToJSON = function() {
          ExcelDataList = JSON.parse(JSON.stringify(XL_row_object));
          var files=$('#FileExcel').val();
          if (!(/\.(xlsx|xls|xlsm)$/i).test(files)) {
-            notify("Please upload valid excel file .xlsx, .xlsm, .xls only.","danger");
+            $("#ErrFileExcel").text("Please upload valid excel file .xlsx, .xlsm, .xls only.");
             $("#FileExcel").val('');
             return;
          }
@@ -56,7 +56,6 @@ var ExcelToJSON = function() {
          },
         success: function (data) {
         $('#loader').addClass('hidden');
-        $("#FileExcel").val('');
         $('#UploadExcelModal').modal('hide'); 
         notify("Excel Uploaded Successfully");
         //location.reload();
@@ -278,12 +277,9 @@ if ($("#logged_in_user_role").val() == "") {
  function navigate6() {
     location.href = "/configuration";
  } 
-function FileUploadImage() {
-  $('#UploadImageModal').modal('show'); 
+function UploadFileModal() {
+  $('#UploadFileModal').modal('show'); 
 }
-function FileUploadExcel() {
-   $('#UploadExcelModal').modal('show'); 
-};
 var arr = [];
 $("#FileImage").change(function(){
    var input = document.getElementById('FileImage');
@@ -311,7 +307,13 @@ function UploadImage(arr)
 {  
    var files=$('#FileImage').val();
    if (!(/\.(jpg|jpeg|png)$/i).test(files)) {
-      notify("Please upload valid image file .jpg, .jpeg, .png only.","danger");
+      $("#ErrFileImage").text("Please upload valid image file .jpg, .jpeg, .png only.");
+      $("#FileImage").val('');
+      return;
+   }
+   if(!$("#FileExcel").val())
+   {
+      $("#ErrFileImage").text("Please upload excel file with agent details before uploading facial images.");
       $("#FileImage").val('');
       return;
    }
@@ -332,7 +334,8 @@ function UploadImage(arr)
      success: function (data) {
          $("#loader").addClass('hidden');
          $("#FileImage").val('');
-         $("#UploadImageModal").modal('hide');
+         $("#FileExcel").val('');
+         $("#UploadFileModal").modal('hide');
          $.each(data, function (key, row) {
          $('#EmpData').append('<tr>' +
             '<td>' + row + '</td>' +
@@ -352,7 +355,7 @@ function UploadImage(arr)
      },
      failure: function () {
          $("#FileImage").val('');
-         $('#UploadImageModal').modal('hide'); 
+         $('#UploadFileModal').modal('hide'); 
          location.href = "/Error";
       }
    });

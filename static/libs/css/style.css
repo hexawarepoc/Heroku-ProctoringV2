@@ -281,6 +281,11 @@ input[type=file] {
 {
   height: 110px;
 }
+.cm-error
+{
+    padding-left:110px;
+    color: red;
+}
 .col-form-label {
     font-size: 15px;
 }
