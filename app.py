@@ -287,51 +287,51 @@ def FilterOnboardedAgent():
             offset=offset -1 
         if session['logged_in_user_role']=="supervisor":
             if  status != "" and name != "": 
-                query_result=list(db["master"].find({"status":status,"role":"agent","reports_to":session['logged_in_user_id'],"user_name":{"$regex":name}},{"_id": 0, "user_id": 1, "user_name": 1,
+                query_result=list(db["master"].find({"status":status,"role":"agent","reports_to":session['logged_in_user_id'],"user_name":{"$regex":name,"$options":"i"}},{"_id": 0, "user_id": 1, "user_name": 1,
                 "onboarding_date": 1, "expiration_date": 1, 
                 "facial_img": 1, "status": 1}).sort("onboarding_date",pymongo.DESCENDING).skip(offset).limit(limit))    
-                num_rows=db["master"].count_documents({"status":status,"role":"agent","reports_to":session['logged_in_user_id'],"user_name":{"$regex":name}})
+                num_rows=db["master"].count_documents({"status":status,"role":"agent","reports_to":session['logged_in_user_id'],"user_name":{"$regex":name,"$options":"i"}})
             elif name != "" and  status== "":
-                query_result=list(db["master"].find({"user_name":{"$regex":name},"reports_to":session['logged_in_user_id'],"role":"agent"},{"_id": 0, "user_id": 1, "user_name": 1,
+                query_result=list(db["master"].find({"user_name":{"$regex":name,"$options":"i"},"reports_to":session['logged_in_user_id'],"role":"agent"},{"_id": 0, "user_id": 1, "user_name": 1,
                 "onboarding_date": 1, "expiration_date": 1, 
                 "facial_img": 1, "status": 1}).sort("onboarding_date",pymongo.DESCENDING).skip(offset).limit(limit))    
-                num_rows=db["master"].count_documents({"status":status,"role":"agent","reports_to":session['logged_in_user_id'],"user_name":{"$regex":name}})
+                num_rows=db["master"].count_documents({"status":status,"role":"agent","reports_to":session['logged_in_user_id'],"user_name":{"$regex":name,"$options":"i"}})
 
             elif status != "" and name =="":
                 query_result=list(db["master"].find({"status":status,"reports_to":session['logged_in_user_id'],"role":"agent"},{"_id": 0, "user_id": 1, "user_name": 1,
                 "onboarding_date": 1, "expiration_date": 1, 
                 "facial_img": 1, "status": 1}).sort("onboarding_date",pymongo.DESCENDING).skip(offset).limit(limit))    
-                num_rows=db["master"].count_documents({"status":status,"role":"agent","reports_to":session['logged_in_user_id'],"user_name":{"$regex":name}})
+                num_rows=db["master"].count_documents({"status":status,"role":"agent","reports_to":session['logged_in_user_id'],"user_name":{"$regex":name,"$options":"i"}})
         
             else:
                 query_result=list(db["master"].find({"role":"agent","reports_to":session['logged_in_user_id']},{"_id": 0, "user_id": 1, "user_name": 1,
                 "onboarding_date": 1, "expiration_date": 1, 
                 "facial_img": 1, "status": 1}).sort("onboarding_date",pymongo.DESCENDING).skip(offset).limit(limit))    
-                num_rows=db["master"].count_documents({"status":status,"role":"agent","reports_to":session['logged_in_user_id'],"user_name":{"$regex":name}})
+                num_rows=db["master"].count_documents({"status":status,"role":"agent","reports_to":session['logged_in_user_id'],"user_name":{"$regex":name,"$options":"i"}})
         else:
 
             if  status != "" and name != "": 
-                query_result=list(db["master"].find({"status":status,"role":"agent","user_name":{"$regex":name}},{"_id": 0, "user_id": 1, "user_name": 1,
+                query_result=list(db["master"].find({"status":status,"role":"agent","user_name":{"$regex":name, '$options' : 'i'}},{"_id": 0, "user_id": 1, "user_name": 1,
                 "onboarding_date": 1, "expiration_date": 1, 
                 "facial_img": 1, "status": 1}).sort("onboarding_date",pymongo.DESCENDING).skip(offset).limit(limit))    
-                num_rows=db["master"].count_documents({"status":status,"role":"agent","user_name":{"$regex":name}})
+                num_rows=db["master"].count_documents({"status":status,"role":"agent","user_name":{"$regex":name, '$options' : 'i'}})
 
             elif name != "" and  status== "":
-                query_result=list(db["master"].find({"user_name":{"$regex":name},"role":"agent"},{"_id": 0, "user_id": 1, "user_name": 1,
+                query_result=list(db["master"].find({"user_name":{"$regex":name, '$options' : 'i'},"role":"agent"},{"_id": 0, "user_id": 1, "user_name": 1,
                 "onboarding_date": 1, "expiration_date": 1, 
                 "facial_img": 1, "status": 1}).sort("onboarding_date",pymongo.DESCENDING).skip(offset).limit(limit))    
-                num_rows=db["master"].count_documents({"status":status,"role":"agent","user_name":{"$regex":name}})
+                num_rows=db["master"].count_documents({"status":status,"role":"agent","user_name":{"$regex":name, '$options' : 'i'}})
 
             elif status != "" and name =="":
                 query_result=list(db["master"].find({"status":status,"role":"agent"},{"_id": 0, "user_id": 1, "user_name": 1,
                 "onboarding_date": 1, "expiration_date": 1, 
                 "facial_img": 1, "status": 1}).sort("onboarding_date",pymongo.DESCENDING).skip(offset).limit(limit))    
-                num_rows=db["master"].count_documents({"status":status,"role":"agent","user_name":{"$regex":name}})
+                num_rows=db["master"].count_documents({"status":status,"role":"agent","user_name":{"$regex":name, '$options' : 'i'}})
             else:
                 query_result=list(db["master"].find({"role":"agent"},{"_id": 0, "user_id": 1, "user_name": 1,
                 "onboarding_date": 1, "expiration_date": 1, 
                 "facial_img": 1, "status": 1}).sort("onboarding_date",pymongo.DESCENDING).skip(offset).limit(limit))    
-                num_rows=db["master"].count_documents({"status":status,"role":"agent","user_name":{"$regex":name}})
+                num_rows=db["master"].count_documents({"status":status,"role":"agent","user_name":{"$regex":name, '$options' : 'i'}})
 
         for i in query_result:
             for key in i.keys():
@@ -878,13 +878,13 @@ def FilterbyAgents():
         today = datetime.combine(date.today(), datetime.min.time())
         if session['logged_in_user_role']=="supervisor":
             if  project != "" and name != "": 
-                data=list(db.dailySession.find({"session_date_string":str(today),"reports_to":session['logged_in_user_id'],"project_name":project,"user_id":{"$regex":name}},
+                data=list(db.dailySession.find({"session_date_string":str(today),"reports_to":session['logged_in_user_id'],"project_name":project,"user_id":{"$regex":name, '$options' : 'i'}},
                 {"_id": 0,"user_id": 1, "user_name": 1,"project_name":1,"login_time":1,"logout_time":1,"session_status": 1}).skip(offset).limit(limit))
-                data2= db.dailySession.count_documents({"session_date_string":str(today),"project_name":project,"user_id":{"$regex":name}})
+                data2= db.dailySession.count_documents({"session_date_string":str(today),"project_name":project,"user_id":{"$regex":name, '$options' : 'i'}})
             elif name != "" and  project== "":
-                data=list(db.dailySession.find({"session_date_string":str(today),"user_id":{"$regex":name},"reports_to":session['logged_in_user_id']},
+                data=list(db.dailySession.find({"session_date_string":str(today),"user_id":{"$regex":name, '$options' : 'i'},"reports_to":session['logged_in_user_id']},
                 {"_id": 0, "user_id": 1, "user_name": 1,"project_name":1,"login_time":1,"logout_time":1,"session_status": 1}).skip(offset).limit(limit))
-                data2=db.dailySession.count_documents({"session_date_string":str(today),"user_id":{"$regex":name}})
+                data2=db.dailySession.count_documents({"session_date_string":str(today),"user_id":{"$regex":name, '$options' : 'i'}})
             elif project != "" and name =="":
                 data=list(db.dailySession.find({"session_date_string":str(today),"project_name":project,"reports_to":session['logged_in_user_id']},
                 {"_id": 0, "user_id": 1, "user_name": 1,"project_name":1,"login_time":1,"logout_time":1, "session_status": 1}).skip(offset).limit(limit))
@@ -895,13 +895,13 @@ def FilterbyAgents():
                 data2=db.dailySession.count_documents({"session_date_string":str(today)})
         else:
             if  project != "" and name != "": 
-                data=list(db.dailySession.find({"session_date_string":str(today),"project_name":project,"user_id":{"$regex":name}},
+                data=list(db.dailySession.find({"session_date_string":str(today),"project_name":project,"user_id":{"$regex":name, '$options' : 'i'}},
                 {"_id": 0,"user_id": 1, "user_name": 1,"project_name":1,"login_time":1,"logout_time":1,"session_status": 1}).skip(offset).limit(limit))
-                data2= db.dailySession.count_documents({"session_date_string":str(today),"project_name":project,"user_id":{"$regex":name}})
+                data2= db.dailySession.count_documents({"session_date_string":str(today),"project_name":project,"user_id":{"$regex":name, '$options' : 'i'}})
             elif name != "" and  project== "":
-                data=list(db.dailySession.find({"session_date_string":str(today),"user_id":{"$regex":name}},
+                data=list(db.dailySession.find({"session_date_string":str(today),"user_id":{"$regex":name, '$options' : 'i'}},
                 {"_id": 0, "user_id": 1, "user_name": 1,"project_name":1,"login_time":1,"logout_time":1,"session_status": 1}).skip(offset).limit(limit))
-                data2=db.dailySession.count_documents({"session_date_string":str(today),"user_id":{"$regex":name}})
+                data2=db.dailySession.count_documents({"session_date_string":str(today),"user_id":{"$regex":name, '$options' : 'i'}})
             elif project != "" and name =="":
                 data=list(db.dailySession.find({"session_date_string":str(today),"project_name":project},
                 {"_id": 0, "user_id": 1, "user_name": 1,"project_name":1,"login_time":1,"logout_time":1, "session_status": 1}).skip(offset).limit(limit))
@@ -1011,13 +1011,13 @@ def FilterbyViolation():
 
         if session['logged_in_user_role']=="supervisor":
             if  violation != "" and name != "": 
-                query_result = list(db.violation.find({"marked_as":"TBM","reports_to":session['logged_in_user_id'],"user_name":{"$regex":name},"violation_type":violation},{"_id": 1, "violation_type": 1,"user_id":1, "user_name": 1, "marked_as": 1,
+                query_result = list(db.violation.find({"marked_as":"TBM","reports_to":session['logged_in_user_id'],"user_name":{"$regex":name,"$options":"i"},"violation_type":violation},{"_id": 1, "violation_type": 1,"user_id":1, "user_name": 1, "marked_as": 1,
                                                         "reviewed_by": 1,"reports_to":session['logged_in_user_id'], "violation_image": 1,"project_name":1,"created_date":1}).sort("created_date",pymongo.DESCENDING).skip(offset).limit(limit))
-                num_rows = db.violation.count_documents({"marked_as":"TBM","user_name":{"$regex":name},"violation_type":violation})
+                num_rows = db.violation.count_documents({"marked_as":"TBM","user_name":{"$regex":name,"$options":"i"},"violation_type":violation})
             elif name != "" and  violation== "":
-                query_result = list(db.violation.find({"marked_as":"TBM","reports_to":session['logged_in_user_id'],"user_name":{"$regex":name}}, {"_id": 1, "violation_type": 1,"user_id":1, "user_name": 1, "marked_as": 1,
+                query_result = list(db.violation.find({"marked_as":"TBM","reports_to":session['logged_in_user_id'],"user_name":{"$regex":name,"$options":"i"}}, {"_id": 1, "violation_type": 1,"user_id":1, "user_name": 1, "marked_as": 1,
                                                         "reviewed_by": 1, "violation_image": 1,"project_name":1,"created_date":1}).sort("created_date",pymongo.DESCENDING).skip(offset).limit(limit))
-                num_rows = db.violation.count_documents({"marked_as":"TBM","reports_to":session['logged_in_user_id'],"user_name":{"$regex":name}})
+                num_rows = db.violation.count_documents({"marked_as":"TBM","reports_to":session['logged_in_user_id'],"user_name":{"$regex":name,"$options":"i"}})
             elif violation != "" and name =="":
                 query_result = list(db.violation.find({"marked_as":"TBM","reports_to":session['logged_in_user_id'],"violation_type":violation}, {"_id": 1, "violation_type": 1,"user_id":1, "user_name": 1, "marked_as": 1,
                                                         "reviewed_by": 1, "violation_image": 1,"project_name":1,"created_date":1}).sort("created_date",pymongo.DESCENDING).skip(offset).limit(limit))
@@ -1028,13 +1028,13 @@ def FilterbyViolation():
                 num_rows = db.violation.count_documents({"marked_as":"TBM","reports_to":session['logged_in_user_id']})
         else:
             if  violation != "" and name != "": 
-                query_result = list(db.violation.find({"marked_as":"TBM","user_name":{"$regex":name},"violation_type":violation},{"_id": 1, "violation_type": 1,"user_id":1, "user_name": 1, "marked_as": 1,
+                query_result = list(db.violation.find({"marked_as":"TBM","user_name":{"$regex":name,"$options":"i"},"violation_type":violation},{"_id": 1, "violation_type": 1,"user_id":1, "user_name": 1, "marked_as": 1,
                                                         "reviewed_by": 1, "violation_image": 1,"project_name":1,"created_date":1}).sort("created_date",pymongo.DESCENDING).skip(offset).limit(limit))
-                num_rows = db.violation.count_documents({"marked_as":"TBM","user_name":{"$regex":name},"violation_type":violation})
+                num_rows = db.violation.count_documents({"marked_as":"TBM","user_name":{"$regex":name, '$options' : 'i'},"violation_type":violation})
             elif name != "" and  violation== "":
-                query_result = list(db.violation.find({"marked_as":"TBM","user_name":{"$regex":name}}, {"_id": 1, "violation_type": 1,"user_id":1, "user_name": 1, "marked_as": 1,
+                query_result = list(db.violation.find({"marked_as":"TBM","user_name":{"$regex":name,"$options":"i"}}, {"_id": 1, "violation_type": 1,"user_id":1, "user_name": 1, "marked_as": 1,
                                                         "reviewed_by": 1, "violation_image": 1,"project_name":1,"created_date":1}).sort("created_date",pymongo.DESCENDING).skip(offset).limit(limit))
-                num_rows = db.violation.count_documents({"marked_as":"TBM","user_name":{"$regex":name}})
+                num_rows = db.violation.count_documents({"marked_as":"TBM","user_name":{"$regex":name, '$options' : 'i'}})
             elif violation != "" and name =="":
                 query_result = list(db.violation.find({"marked_as":"TBM","violation_type":violation}, {"_id": 1, "violation_type": 1,"user_id":1, "user_name": 1, "marked_as": 1,
                                                         "reviewed_by": 1, "violation_image": 1,"project_name":1,"created_date":1}).sort("created_date",pymongo.DESCENDING).skip(offset).limit(limit))
